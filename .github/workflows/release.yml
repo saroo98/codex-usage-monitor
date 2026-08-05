@@ -1,4 +1,4 @@
-# Public release pipeline for the current application.
+# Public release pipeline for the current application and verified backup.
 name: Build portable release
 
 on:
