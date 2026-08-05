@@ -36,20 +36,30 @@ jobs:
         shell: pwsh
         run: |
           python tools/package.py
-          $line = (Get-Content dist/SHA256SUMS.txt -Raw).Trim()
-          $parts = $line -split "\s+\*", 2
-          if ($parts.Count -ne 2) { throw "Invalid checksum format." }
-          $package = Join-Path dist $parts[1]
-          $actual = (Get-FileHash $package -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $parts[0].ToLowerInvariant()) { throw "Package checksum verification failed." }
-          python -c "import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); bad=z.testzip(); assert bad is None, bad; print(f'ZIP entries: {len(z.infolist())}')" $package
+          $entries = @()
+          foreach ($line in Get-Content dist/SHA256SUMS.txt) {
+            if ($line -notmatch '^([0-9a-fA-F]{64}) \*(.+)$') { throw "Invalid checksum line: $line" }
+            $path = Join-Path dist $Matches[2]
+            if (-not (Test-Path $path)) { throw "Missing package: $($Matches[2])" }
+            $actual = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $Matches[1].ToLowerInvariant()) { throw "Package checksum verification failed: $($Matches[2])" }
+            python -c "import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); bad=z.testzip(); assert bad is None, bad; print(f'ZIP entries: {len(z.infolist())}')" $path
+            $entries += [pscustomobject]@{ Name = $Matches[2]; Hash = $actual; Size = (Get-Item $path).Length }
+          }
+          if ($entries.Count -ne 2) { throw "Expected a primary and backup ZIP." }
+          if ($entries[0].Hash -ne $entries[1].Hash) { throw "Backup ZIP does not match the primary ZIP." }
+          if ($entries[0].Size -ne $entries[1].Size) { throw "Backup ZIP size does not match the primary ZIP." }
+
           $record = @(
             "# Build verification",
             "",
-            "- Package: ``$($parts[1])``",
-            "- SHA-256: ``$actual``",
+            "- Primary package: ``$($entries[0].Name)``",
+            "- Backup package: ``$($entries[1].Name)``",
+            "- Size: ``$($entries[0].Size) bytes`` each",
+            "- SHA-256: ``$($entries[0].Hash)``",
             "- Tests: passed on the public Windows build runner",
-            "- ZIP integrity: passed"
+            "- ZIP integrity: passed for both archives",
+            "- Backup equality: byte-for-byte match"
           ) -join "`n"
           Set-Content dist/BUILD-VERIFICATION.md -Value $record -Encoding utf8
 
