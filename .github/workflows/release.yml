@@ -1,3 +1,4 @@
+# Public release pipeline for the current application.
 name: Build portable release
 
 on:
