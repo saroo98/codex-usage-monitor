@@ -1,81 +1,82 @@
-# Usage Monitor for Codex
+# Codex Usage Monitor
 
-A lightweight Windows utility that monitors Codex usage limits and reset availability through the locally installed Codex App Server.
+A lightweight native Windows widget for monitoring Codex usage limits and reset times through the locally installed Codex App Server.
 
-[Website](https://saroo98.github.io/codex-usage-monitor/) · [Releases](https://github.com/saroo98/codex-usage-monitor/releases) · [Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [Code signing policy](CODE_SIGNING_POLICY.md)
+[Website](https://saroo98.github.io/codex-usage-monitor/) · [Releases](https://github.com/saroo98/codex-usage-monitor/releases) · [Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [Security](SECURITY.md)
 
-## Current public release
+## What it does
 
-The current source is the script-based **Codex Usage Notifier 5.0.0 for Windows**. It includes:
+- Shows confirmed remaining usage and reset timing in a compact always-available widget.
+- Monitors multiple local Codex profiles without browser scraping.
+- Preserves the last valid reading when Codex is delayed, offline, or unavailable.
+- Supports Windows notifications, quiet hours, local history, and optional SMTP email alerts.
+- Stores settings and history locally with bounded, redacted diagnostics.
+- Handles portable updates transactionally with integrity checks and startup-health rollback.
+- Supports light, dark, High Contrast, keyboard navigation, reduced motion, and 100–200% scaling.
 
-- Structured Codex rate-limit reads without browser scraping
-- A compact always-available WPF usage widget
-- A modern desktop event popup
-- Windows toast, tray balloon, sound, and taskbar notification fallbacks
-- Two-read freshness checks and confirmation of apparent usage increases
-- Atomic redundant state files and pending-alert recovery
-- Scheduled Task installation, watchdog checks, diagnostics, and uninstall tools
-
-The application source and tests are in [`app/`](app/).
-
-### Downloads
-
-- [Primary portable ZIP](https://github.com/saroo98/codex-usage-monitor/releases/download/v5.0.0/Usage-Monitor-for-Codex-5.0.0-Windows.zip)
-- [Backup portable ZIP](https://github.com/saroo98/codex-usage-monitor/releases/download/v5.0.0/Usage-Monitor-for-Codex-5.0.0-Windows-BACKUP.zip)
-- [SHA-256 checksums](https://github.com/saroo98/codex-usage-monitor/releases/download/v5.0.0/SHA256SUMS.txt)
-
-Both archives are **66,363 bytes** and are byte-for-byte identical.
-
-SHA-256:
-
-```text
-7152958049cce22e70380810cd7d5e8fd525577e73e50a958c45f8fc7f07ae00
-```
-
-The public release workflow downloads the published assets again, reopens both ZIP files, performs integrity tests, and verifies their hashes before recording the release as complete.
+The application contains no project-operated telemetry or advertising.
 
 ## Requirements
 
-- Windows 10 or Windows 11
-- Python 3.10 or newer
-- Current Codex CLI
-- A ChatGPT-backed Codex account signed in through Codex CLI
+- Windows 10 build 19041 or later, or Windows 11
+- x64 or Arm64 Windows
+- The official Codex CLI installed and signed in
+
+Self-contained packages include the required .NET runtime. Framework-dependent packages require the matching .NET 10 Desktop Runtime.
 
 ## Install
 
-1. Download the ZIP from the links above or the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases/tag/v5.0.0).
-2. Verify the SHA-256 value.
-3. Extract the archive.
-4. Open `CodexUsageNotifier` and run `INSTALL.cmd`.
+1. Open the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases).
+2. Download the package for your Windows architecture.
+3. Verify its SHA-256 value against `SHA256SUMS.txt`.
+4. Extract a portable ZIP and run `CodexUsageMonitor.exe`, or install the signed MSIX package when available.
+5. Complete onboarding and choose the Codex profiles to monitor.
 
-See [`app/README.md`](app/README.md) for complete installation, operation, diagnostics, and uninstall instructions.
+Official production artifacts are published only when the release checks described in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md) pass. Development-signed or unsigned artifacts are identified explicitly and are not represented as production-signed builds.
 
-## Tests
+## Privacy and security
+
+Codex authentication remains owned by the installed Codex CLI. The monitor does not request a ChatGPT password and is designed not to record prompts, conversations, repository contents, browser cookies, or Codex authentication tokens.
+
+Optional email credentials are protected using Windows security facilities. Diagnostic exports are bounded and redacted, but users should still review them before sharing. See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
+
+## Build from source
+
+The repository pins .NET SDK `10.0.302` in `global.json`.
 
 ```powershell
-$env:PYTHONPATH = "app"
-python -m compileall -q app tools
-python -m unittest discover -s app/tests -v
+./eng/bootstrap.ps1
+./eng/verify.ps1 -Configuration Debug -Architecture x64
 ```
 
-The public CI workflow runs the test suite on Windows with Python 3.10 and Python 3.14. It also verifies deterministic packaging.
+Complete Release verification for both architectures:
 
-## Privacy
+```powershell
+./eng/capture-verification-evidence.ps1 -Configuration Release -Architecture All
+```
 
-Processing is local by default. The application does not collect prompts, conversations, repository contents, browser cookies, passwords, or authentication tokens. See [PRIVACY.md](PRIVACY.md).
+Build and independently verify the unsigned artifact matrix:
 
-## Security
+```powershell
+./eng/package-release.ps1 -Version 6.0.0 -OutputRoot artifacts/release -Configuration Release
+```
 
-Do not include credentials, tokens, account identifiers, or private logs in public issues. Follow [SECURITY.md](SECURITY.md) for vulnerability reports.
+Generated builds, reports, databases, logs, and local evidence remain under ignored paths and must not be committed.
 
-## Code signing
+## Repository layout
 
-The release process and SignPath-oriented approval rules are documented in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md). Unsigned artifacts must remain clearly identified until production signing is enabled.
+- `src/CodexUsageMonitor.Core`: platform-independent domain rules
+- `src/CodexUsageMonitor.Application`: use cases, ports, and runtime state
+- `src/CodexUsageMonitor.App`: WPF shell, views, view models, and composition
+- `src/CodexUsageMonitor.*`: Codex, persistence, notification, email, migration, updater, and Windows adapters
+- `tests`: unit, contract, integration, migration, packaging, performance, and UI tests
+- `eng`: build, verification, packaging, privacy-audit, and release tooling
+- `docs`: static public website
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Disclaimer
 
-This is an independent open-source project. It is not affiliated with, endorsed by, or maintained by OpenAI. Codex, ChatGPT, and OpenAI are trademarks of their respective owner.
+This is an independent open-source project. It is not affiliated with, endorsed by, or maintained by OpenAI. Codex, ChatGPT, and OpenAI are trademarks of their respective owners.

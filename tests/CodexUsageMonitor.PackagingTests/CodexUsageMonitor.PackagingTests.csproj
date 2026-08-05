@@ -1,0 +1,6 @@
+<Project Sdk="MSTest.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.PackagingTests</RootNamespace>
+  </PropertyGroup>
+</Project>

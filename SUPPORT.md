@@ -1,29 +1,11 @@
 # Support
 
-Use GitHub Issues for public support, bug reports, and feature requests.
+Use [GitHub Issues](https://github.com/saroo98/codex-usage-monitor/issues) for public support and bug reports.
 
-## Before opening an issue
+Before opening an issue, install the latest official release, check existing issues, restart Codex and the monitor, and reproduce the problem once with redacted diagnostics enabled when useful.
 
-- Install the latest official release.
-- Check existing open and closed issues.
-- Restart the application and Codex.
-- Use the application's redacted diagnostics export when available.
+Include the application version and installation type, Windows version and architecture, Codex version, clear reproduction steps, and expected versus actual behavior.
 
-## Include
-
-- Application version and installation type
-- Windows version and architecture
-- Codex version
-- Clear reproduction steps
-- Expected and actual behavior
-- Redacted logs only when necessary
-
-## Never include
-
-- Passwords, access tokens, cookies, or OAuth codes
-- Full email addresses or account identifiers
-- Prompt or conversation content
-- Private repository paths or source code
-- Unredacted diagnostic bundles
+Never include passwords, tokens, cookies, OAuth codes, certificates, full email addresses, account identifiers, prompt content, private repository paths, or unredacted diagnostic bundles.
 
 Security vulnerabilities must follow [SECURITY.md](SECURITY.md), not a public support issue.

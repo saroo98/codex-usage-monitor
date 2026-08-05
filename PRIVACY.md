@@ -1,39 +1,34 @@
-# Privacy Policy
+# Privacy policy
 
 Last updated: August 5, 2026
 
-Usage Monitor for Codex is a local Windows utility maintained by [@saroo98](https://github.com/saroo98).
+Codex Usage Monitor is designed as a local Windows utility.
 
-## Data processed locally
+## Local data
 
-The current application may read and store locally:
+The application may store the following on the user's computer:
 
-- Codex usage-limit percentages and reset times
-- The minimum account and plan metadata needed to validate the active Codex session
-- Application configuration, confirmed monitor state, pending notification state, widget position, heartbeats, and diagnostic logs
+- Codex usage percentages, reset times, and minimal account metadata needed to keep profiles separate
+- Application settings, confirmed monitor state, pending notification state, and widget placement
+- Local usage history, bounded diagnostic logs, and update transaction state
+- Optional email configuration and encrypted credential references
 
-The application is not designed to collect prompts, conversations, repository contents, browser cookies, session cookies, passwords, or authentication tokens.
+Codex authentication remains managed by the installed Codex CLI. Optional email secrets are protected using Windows security facilities and are not written to ordinary settings or diagnostic output.
+
+## Data the project does not collect
+
+The application contains no project-operated telemetry, analytics, advertising, or behavioral tracking. It is not designed to collect prompts, conversations, repository contents, browser cookies, ChatGPT passwords, or Codex authentication tokens.
 
 ## Network activity
 
-The utility communicates with the locally installed Codex App Server. Codex itself may contact OpenAI as required for authentication and usage data. The project website and GitHub release pages are contacted only when the user opens them.
+The application communicates with the locally installed Codex App Server. Codex itself may contact OpenAI as required for authentication and usage information. Optional email delivery contacts the provider configured by the user. Update checks occur only when enabled and a trusted release feed is configured.
 
-## Telemetry
+The public website contains no analytics, tracking scripts, remote fonts, or cookies.
 
-The application contains no project-operated telemetry, analytics, advertising, or behavioral tracking. The project does not sell user data.
+## Retention and deletion
 
-## Credentials
-
-Authentication remains managed by Codex CLI. This application does not request or store a ChatGPT password and must not write authentication tokens to its settings, logs, support output, or repository.
-
-## Local retention and deletion
-
-Users can remove local application data by uninstalling the notifier and deleting its local data folder after all notifier processes and Scheduled Tasks have stopped. This does not control data retained independently by Codex, OpenAI, GitHub, or Windows.
+History retention is configurable. Uninstall the application and remove its local data folder to delete application data after all monitor and updater processes have stopped.
 
 ## Support
 
-Public issues must not contain personal data, credentials, authentication material, account identifiers, or unredacted logs. For sensitive security matters, follow [SECURITY.md](SECURITY.md).
-
-## Changes
-
-Material policy changes are recorded in this repository's public history.
+Never include credentials, OAuth codes, account identifiers, private paths, or unredacted logs in public issues. Use [SECURITY.md](SECURITY.md) for sensitive reports.

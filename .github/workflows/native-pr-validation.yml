@@ -1,0 +1,65 @@
+name: Native PR validation
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  NUGET_XMLDOC_MODE: skip
+
+jobs:
+  validate:
+    name: Debug x64 validation
+    runs-on: windows-2025
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install repository-pinned .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Verify native source
+        shell: pwsh
+        run: ./eng/verify.ps1 -Configuration Debug -Architecture x64 -SkipUi
+
+      - name: Run hosted-compatible UI test classes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The non-interactive hosted runner cannot unload the executable WPF assembly.
+          # Run only shell-safe parser and activation classes here; the full local UI suite
+          # remains part of workstation verification and dedicated UI evidence runs.
+          $classes = @(
+            'ActivationMessageTests',
+            'AppCommandLineTests',
+            'DeferredNotificationSignalTests'
+          )
+          foreach ($class in $classes) {
+            Write-Host "Running UI test class: $class"
+            & ./eng/test.ps1 -Suite Ui -Configuration Debug -NoBuild -Filter "FullyQualifiedName~$class"
+            if ($LASTEXITCODE -ne 0) { throw "UI test class failed: $class" }
+          }
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-pr-failure-evidence
+          path: artifacts/TestResults/**
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,52 @@
+<Window x:Class="CodexUsageMonitor.App.Views.ResetCreditConfirmationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Confirm usage reset"
+        Width="540"
+        Height="520"
+        MinWidth="400"
+        MinHeight="380"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        AutomationProperties.Name="Confirm usage reset">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <Grid Margin="28">
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <StackPanel>
+      <TextBlock Text="Redeem this reset credit?" FontSize="23" FontWeight="SemiBold" AutomationProperties.HeadingLevel="Level1" />
+      <TextBlock Text="This action changes your Codex account quota and cannot be undone by this application." Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,7,0,20" />
+    </StackPanel>
+    <Border Grid.Row="1" Style="{StaticResource SettingsCardStyle}">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="130" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <TextBlock Text="Account" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3" />
+        <TextBlock Grid.Column="1" Text="{Binding AccountLabel}" FontWeight="SemiBold" Margin="0,3" />
+        <TextBlock Grid.Row="1" Text="Credit" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3" />
+        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ResetCreditLabel}" FontWeight="SemiBold" Margin="0,3" />
+        <TextBlock Grid.Row="2" Text="Affected limits" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3" />
+        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding AffectedLimitsText}" Margin="0,3" />
+        <TextBlock Grid.Row="3" Text="Expires" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3" />
+        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ExpiryText}" Margin="0,3" />
+      </Grid>
+    </Border>
+    <CheckBox x:Name="ConfirmationCheckBox"
+              Grid.Row="2"
+              Margin="0,8,0,22"
+              Content="I understand that a network interruption can make the immediate outcome uncertain. Retrying will reuse the same request identity."
+              AutomationProperties.HelpText="Required before redemption." />
+    <WrapPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="_Cancel" IsCancel="True" MinWidth="90" Margin="0,0,8,0" />
+      <Button Content="_Redeem credit" MinWidth="120" IsDefault="True" Click="OnConfirmClick">
+        <Button.Style>
+          <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="IsEnabled" Value="False" />
+            <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=ConfirmationCheckBox}" Value="True"><Setter Property="IsEnabled" Value="True" /></DataTrigger></Style.Triggers>
+          </Style>
+        </Button.Style>
+      </Button>
+    </WrapPanel>
+  </Grid>
+  </ScrollViewer>
+</Window>

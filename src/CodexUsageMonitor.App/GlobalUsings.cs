@@ -1,0 +1,17 @@
+global using System.IO;
+global using CodexUsageMonitor.Application.Migration;
+global using CodexUsageMonitor.Application.Monitoring;
+global using CodexUsageMonitor.Application.Runtime;
+global using CodexUsageMonitor.Application.Settings;
+global using CodexUsageMonitor.Application.Updates;
+global using System.Net.Http;
+global using Application = System.Windows.Application;
+global using Brush = System.Windows.Media.Brush;
+global using Brushes = System.Windows.Media.Brushes;
+global using Clipboard = System.Windows.Clipboard;
+global using ContextMenu = System.Windows.Controls.ContextMenu;
+global using MessageBox = System.Windows.MessageBox;
+global using Pen = System.Windows.Media.Pen;
+global using Point = System.Windows.Point;
+global using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
+global using TextDataFormat = System.Windows.TextDataFormat;

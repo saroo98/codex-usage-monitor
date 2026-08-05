@@ -1,0 +1,45 @@
+<Window x:Class="CodexUsageMonitor.App.Views.MicrosoftDeviceCodeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Connect Microsoft email"
+        Width="520" Height="390"
+        MinWidth="400" MinHeight="330"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource SurfaceBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        AutomationProperties.Name="Microsoft email authorization">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <Grid Margin="28">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <TextBlock Text="Authorize Microsoft email" FontSize="24" FontWeight="SemiBold" AutomationProperties.HeadingLevel="Level1" />
+    <TextBlock Grid.Row="1" Margin="0,10,0,0" Text="A browser window has been opened. Enter this one-time code when Microsoft asks for it." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+    <Border Grid.Row="2" Margin="0,22,0,0" Padding="18" CornerRadius="{DynamicResource CardCornerRadius}" Background="{DynamicResource SurfaceElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+      <StackPanel>
+        <TextBlock Text="One-time code" Foreground="{DynamicResource TextSecondaryBrush}" />
+        <TextBlock x:Name="UserCodeText" Margin="0,6,0,0" FontFamily="{DynamicResource AppMonospaceFont}" FontSize="30" FontWeight="SemiBold" TextAlignment="Center" AutomationProperties.LiveSetting="Assertive" />
+      </StackPanel>
+    </Border>
+    <StackPanel Grid.Row="3" Margin="0,16,0,0">
+      <TextBlock x:Name="ProviderMessageText" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+      <TextBlock x:Name="ExpiryText" Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+      <TextBlock Text="Waiting for authorization. You can return here after completing sign-in in the browser."
+                 Margin="0,18,0,0"
+                 Foreground="{DynamicResource TextMutedBrush}"
+                 AutomationProperties.LiveSetting="Polite" />
+    </StackPanel>
+    <WrapPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+      <Button Content="_Copy code" Click="OnCopyCode" Margin="0,0,8,0" />
+      <Button Content="_Open sign-in page" Click="OnOpenPage" Margin="0,0,8,0" />
+      <Button Content="_Cancel" Click="OnCancel" IsCancel="True" />
+    </WrapPanel>
+  </Grid>
+  </ScrollViewer>
+</Window>

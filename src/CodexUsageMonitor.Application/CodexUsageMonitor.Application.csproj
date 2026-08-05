@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+  </ItemGroup>
+</Project>

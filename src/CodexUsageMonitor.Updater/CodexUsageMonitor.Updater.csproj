@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.Updater</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <UpdatePublicKeyBase64 Condition="'$(UpdatePublicKeyBase64)' == '' and '$(Configuration)' != 'Release'">11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=</UpdatePublicKeyBase64>
+    <UpdateBuildFlavor Condition="'$(Configuration)' == 'Release'">Production</UpdateBuildFlavor>
+    <UpdateBuildFlavor Condition="'$(Configuration)' != 'Release'">Development</UpdateBuildFlavor>
+  </PropertyGroup>
+  <Target Name="RequireReleaseUpdateTrustAnchor" BeforeTargets="CoreCompile" Condition="'$(Configuration)' == 'Release' and '$(UpdatePublicKeyBase64)' == ''">
+    <Error Text="Release builds require UpdatePublicKeyBase64 to be supplied by the trusted release pipeline." />
+  </Target>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>UpdatePublicKeyBase64</_Parameter1>
+      <_Parameter2>$(UpdatePublicKeyBase64)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>UpdateBuildFlavor</_Parameter1>
+      <_Parameter2>$(UpdateBuildFlavor)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="NSec.Cryptography" />
+  </ItemGroup>
+</Project>

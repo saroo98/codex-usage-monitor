@@ -1,0 +1,11 @@
+<Project Sdk="MSTest.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.MigrationTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+    <ProjectReference Include="../../src/CodexUsageMonitor.Persistence/CodexUsageMonitor.Persistence.csproj" />
+    <ProjectReference Include="../../src/CodexUsageMonitor.Migration/CodexUsageMonitor.Migration.csproj" />
+  </ItemGroup>
+</Project>

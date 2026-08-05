@@ -1,0 +1,41 @@
+<Project>
+  <PropertyGroup>
+    <Company>Codex Usage Monitor Contributors</Company>
+    <Authors>Codex Usage Monitor Contributors</Authors>
+    <Product>Codex Usage Monitor for Windows</Product>
+    <Copyright>Copyright © 2026 Codex Usage Monitor Contributors</Copyright>
+    <VersionPrefix>6.0.0</VersionPrefix>
+    <Version>$(VersionPrefix)</Version>
+    <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
+    <FileVersion>$(VersionPrefix).0</FileVersion>
+    <InformationalVersion>$(VersionPrefix)+$(SourceRevisionId)</InformationalVersion>
+    <LangVersion>14.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <DebugType>embedded</DebugType>
+    <RepositoryUrl>https://github.com/saroo98/codex-usage-monitor</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <TestResultsDirectory>$(MSBuildThisFileDirectory)artifacts/TestResults</TestResultsDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ReleasePackagingRestore)' == 'true'">
+    <NuGetLockFilePath>$(MSBuildThisFileDirectory)artifacts/obj/release-locks/$(MSBuildProjectName)-$(RuntimeIdentifier)-$(SelfContained).lock.json</NuGetLockFilePath>
+    <RestoreLockedMode>false</RestoreLockedMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredPGO>true</TieredPGO>
+    <PublishReadyToRun>false</PublishReadyToRun>
+  </PropertyGroup>
+</Project>

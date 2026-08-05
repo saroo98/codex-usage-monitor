@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.Email</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+    <ProjectReference Include="../CodexUsageMonitor.Persistence/CodexUsageMonitor.Persistence.csproj" />
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+</Project>
