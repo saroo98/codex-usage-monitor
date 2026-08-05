@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A lightweight Windows desktop widget for monitoring Codex usage limits and reset times.">
+  <meta name="description" content="A lightweight Windows desktop utility for monitoring Codex usage limits and reset availability.">
   <title>Usage Monitor for Codex</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -23,45 +23,41 @@
 
   <main>
     <section class="hero shell">
-      <div class="eyebrow">Windows desktop utility</div>
+      <div class="eyebrow">Open-source Windows utility</div>
       <h1>Codex usage at a glance.</h1>
-      <p class="lead">A compact, local-first Windows widget for tracking Codex usage limits, reset times, and optional notifications without keeping a terminal or browser page open.</p>
+      <p class="lead">A local Windows notifier with a compact live widget, reset alerts, and reliability checks. It reads structured rate-limit data through the locally installed Codex App Server.</p>
       <div class="actions">
         <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">View releases</a>
         <a class="button secondary" href="https://github.com/saroo98/codex-usage-monitor">View source</a>
       </div>
 
-      <div class="widget-preview" aria-label="Example compact usage widgets">
+      <div class="widget-preview" aria-label="Example compact usage widget">
         <div class="widget-row">
           <div class="widget">
             <div class="ring">!</div>
             <div><strong>0% left</strong><span>Resets in 5d 15h</span></div>
-          </div>
-          <div class="widget">
-            <div class="ring">!</div>
-            <div><strong>0%</strong><span>5d15h</span></div>
           </div>
         </div>
       </div>
     </section>
 
     <section id="features" class="shell">
-      <h2>Small surface. Complete control.</h2>
-      <p class="section-intro">Designed as an unobtrusive Windows companion with native behavior, clear account isolation, and low idle resource use.</p>
+      <h2>Compact monitoring with visible failure states.</h2>
+      <p class="section-intro">The current public release is a Python and PowerShell application for Windows 10 and Windows 11.</p>
       <div class="grid">
-        <article class="card"><h3>Responsive widgets</h3><p>Medium, Small, and Extra Small layouts preserve only the information needed at each size.</p></article>
-        <article class="card"><h3>Useful alerts</h3><p>Native Windows notifications, configurable thresholds, quiet hours, and optional email delivery.</p></article>
-        <article class="card"><h3>Desktop-native</h3><p>Tray controls, opacity, themes, edge snapping, click-through mode, and per-monitor positioning.</p></article>
-        <article class="card"><h3>Dynamic limits</h3><p>Supports available Codex rate-limit windows without assuming every account exposes the same limits.</p></article>
-        <article class="card"><h3>Local-first privacy</h3><p>No telemetry by default. No prompt, conversation, browser-cookie, or repository-content collection.</p></article>
-        <article class="card"><h3>Open release process</h3><p>MIT licensed source, public build workflows, checksums, provenance, and a documented code signing policy.</p></article>
+        <article class="card"><h3>Live widget</h3><p>A small WPF desktop widget shows the confirmed remaining percentage and reset countdown.</p></article>
+        <article class="card"><h3>Reset alerts</h3><p>A modern popup is backed by toast, tray, sound, and taskbar notification channels.</p></article>
+        <article class="card"><h3>Structured data</h3><p>Reads Codex rate limits through App Server methods instead of scraping a browser page.</p></article>
+        <article class="card"><h3>Reliability checks</h3><p>Confirms apparent increases, rejects regressed windows, and preserves pending alerts across restarts.</p></article>
+        <article class="card"><h3>Local-first privacy</h3><p>No project telemetry and no collection of prompts, conversations, cookies, passwords, or tokens.</p></article>
+        <article class="card"><h3>Open release process</h3><p>MIT source, public tests, deterministic ZIP packaging, SHA-256 checksums, and build attestations.</p></article>
       </div>
     </section>
 
     <section class="shell">
       <div class="card">
         <h2>Download from the official repository</h2>
-        <p>Official builds and SHA-256 checksums are published only through GitHub Releases. Review the privacy and code-signing policies before installing.</p>
+        <p>Official release archives and checksums are published through GitHub. The current package requires Python 3.10 or newer and a signed-in Codex CLI installation.</p>
         <div class="actions" style="justify-content:flex-start">
           <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">Open releases</a>
           <a class="button secondary" href="privacy.html">Read privacy policy</a>
