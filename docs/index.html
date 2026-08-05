@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A lightweight Windows desktop widget for monitoring Codex usage limits and reset times.">
+  <title>Usage Monitor for Codex</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="shell">
+    <nav aria-label="Primary navigation">
+      <a class="brand" href="index.html">Usage Monitor for Codex</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="support.html">Support</a>
+        <a href="code-signing.html">Code signing</a>
+        <a href="https://github.com/saroo98/codex-usage-monitor">GitHub</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero shell">
+      <div class="eyebrow">Windows desktop utility</div>
+      <h1>Codex usage at a glance.</h1>
+      <p class="lead">A compact, local-first Windows widget for tracking Codex usage limits, reset times, and optional notifications without keeping a terminal or browser page open.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">View releases</a>
+        <a class="button secondary" href="https://github.com/saroo98/codex-usage-monitor">View source</a>
+      </div>
+
+      <div class="widget-preview" aria-label="Example compact usage widgets">
+        <div class="widget-row">
+          <div class="widget">
+            <div class="ring">!</div>
+            <div><strong>0% left</strong><span>Resets in 5d 15h</span></div>
+          </div>
+          <div class="widget">
+            <div class="ring">!</div>
+            <div><strong>0%</strong><span>5d15h</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="shell">
+      <h2>Small surface. Complete control.</h2>
+      <p class="section-intro">Designed as an unobtrusive Windows companion with native behavior, clear account isolation, and low idle resource use.</p>
+      <div class="grid">
+        <article class="card"><h3>Responsive widgets</h3><p>Medium, Small, and Extra Small layouts preserve only the information needed at each size.</p></article>
+        <article class="card"><h3>Useful alerts</h3><p>Native Windows notifications, configurable thresholds, quiet hours, and optional email delivery.</p></article>
+        <article class="card"><h3>Desktop-native</h3><p>Tray controls, opacity, themes, edge snapping, click-through mode, and per-monitor positioning.</p></article>
+        <article class="card"><h3>Dynamic limits</h3><p>Supports available Codex rate-limit windows without assuming every account exposes the same limits.</p></article>
+        <article class="card"><h3>Local-first privacy</h3><p>No telemetry by default. No prompt, conversation, browser-cookie, or repository-content collection.</p></article>
+        <article class="card"><h3>Open release process</h3><p>MIT licensed source, public build workflows, checksums, provenance, and a documented code signing policy.</p></article>
+      </div>
+    </section>
+
+    <section class="shell">
+      <div class="card">
+        <h2>Download from the official repository</h2>
+        <p>Official builds and SHA-256 checksums are published only through GitHub Releases. Review the privacy and code-signing policies before installing.</p>
+        <div class="actions" style="justify-content:flex-start">
+          <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">Open releases</a>
+          <a class="button secondary" href="privacy.html">Read privacy policy</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-row">
+      <span>MIT licensed · Maintained by @saroo98</span>
+      <span>Independent project. Not affiliated with or endorsed by OpenAI.</span>
+    </div>
+  </footer>
+</body>
+</html>
