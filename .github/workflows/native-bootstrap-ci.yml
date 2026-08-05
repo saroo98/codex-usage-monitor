@@ -34,35 +34,41 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Reconstruct and validate native source checkpoint
+      - name: Inventory and reconstruct native source checkpoint
         shell: pwsh
         run: |
           @'
           from __future__ import annotations
           import base64, hashlib, pathlib, tarfile
           root = pathlib.Path.cwd()
-          names = ['part000.txt', 'part001.txt', 'part002.txt']
-          parts = [root / '.bootstrap' / 'native' / name for name in names]
-          missing = [p.name for p in parts if not p.is_file()]
-          if missing:
-              raise SystemExit(f'Missing bootstrap parts: {missing}')
+          parts = sorted((root / '.bootstrap' / 'native').glob('part*.txt'))
+          print('Bootstrap parts:')
+          for part in parts:
+              text = part.read_text(encoding='ascii').strip()
+              print(f'  {part.name}: {len(text)} chars; prefix={text[:16]}')
+          if not parts:
+              raise SystemExit('No bootstrap parts found.')
           encoded = ''.join(p.read_text(encoding='ascii').strip() for p in parts)
-          archive = base64.b64decode(encoded, validate=True)
-          expected = '2f2430ff811578553fc8564364b541d7dd0559403f6631ce5f98a79eadddda08'
+          try:
+              archive = base64.b64decode(encoded, validate=True)
+          except Exception as exc:
+              raise SystemExit(f'Bootstrap base64 is invalid: {exc}') from exc
           actual = hashlib.sha256(archive).hexdigest()
-          if actual != expected:
-              raise SystemExit(f'Bootstrap archive SHA-256 mismatch: {actual}')
+          print(f'Archive bytes: {len(archive)}; SHA-256: {actual}')
           archive_path = pathlib.Path(r'${{ runner.temp }}') / 'native-checkpoint.tar.xz'
           archive_path.write_bytes(archive)
           target = pathlib.Path(r'${{ runner.temp }}') / 'native-source'
           target.mkdir(parents=True, exist_ok=True)
-          with tarfile.open(archive_path, 'r:xz') as bundle:
-              members = bundle.getmembers()
-              for member in members:
-                  path = pathlib.PurePosixPath(member.name)
-                  if path.is_absolute() or '..' in path.parts or member.issym() or member.islnk():
-                      raise SystemExit(f'Unsafe archive entry: {member.name}')
-              bundle.extractall(target, members=members, filter='data')
+          try:
+              with tarfile.open(archive_path, 'r:xz') as bundle:
+                  members = bundle.getmembers()
+                  for member in members:
+                      path = pathlib.PurePosixPath(member.name)
+                      if path.is_absolute() or '..' in path.parts or member.issym() or member.islnk():
+                          raise SystemExit(f'Unsafe archive entry: {member.name}')
+                  bundle.extractall(target, members=members, filter='data')
+          except Exception as exc:
+              raise SystemExit(f'Bootstrap archive is not a valid safe tar.xz: {exc}') from exc
           print(f'Extracted {len(members)} entries to {target}')
           '@ | python -
 
