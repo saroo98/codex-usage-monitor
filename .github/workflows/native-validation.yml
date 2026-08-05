@@ -1,0 +1,46 @@
+name: Native Windows validation
+
+on:
+  push:
+    branches: [codex/native-1.0]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Restore locked dependencies
+        run: dotnet restore CodexUsageMonitor.slnx --locked-mode
+      - name: Build release
+        run: dotnet build CodexUsageMonitor.slnx -c Release --no-restore
+      - name: Test release
+        run: dotnet test CodexUsageMonitor.slnx -c Release --no-build --logger "trx;LogFileName=native-tests.trx"
+      - name: Static verification
+        run: python eng/verify-static.py
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-validation-evidence
+          path: |
+            **/TestResults/**/*.trx
+            artifacts/**
+          if-no-files-found: ignore
