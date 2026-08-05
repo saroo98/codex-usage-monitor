@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Code signing policy for Usage Monitor for Codex.">
+  <title>Code signing policy · Usage Monitor for Codex</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="shell"><nav><a class="brand" href="index.html">Usage Monitor for Codex</a><div class="nav-links"><a href="index.html">Home</a><a href="privacy.html">Privacy</a><a href="support.html">Support</a><a href="https://github.com/saroo98/codex-usage-monitor">GitHub</a></div></nav></header>
+  <main class="shell content">
+    <div class="eyebrow">Release integrity</div>
+    <h1>Code signing policy</h1>
+
+    <h2>Roles</h2>
+    <ul>
+      <li>Author/committer: <a href="https://github.com/saroo98">@saroo98</a></li>
+      <li>Reviewer: <a href="https://github.com/saroo98">@saroo98</a></li>
+      <li>Release approver: <a href="https://github.com/saroo98">@saroo98</a></li>
+    </ul>
+
+    <h2>Trusted source</h2>
+    <p>Only source committed to the public <a href="https://github.com/saroo98/codex-usage-monitor">canonical repository</a> may be used for official signed artifacts. Private planning files, local patches, unpublished source, and manually substituted binaries are excluded.</p>
+
+    <h2>Build requirements</h2>
+    <p>Official release artifacts must be generated from a tagged commit by the repository's public GitHub Actions workflow on a clean runner. The workflow must build and test from declared source and dependencies, create checksums and provenance, and submit the generated artifacts for signing without manual replacement.</p>
+
+    <h2>Approval</h2>
+    <p>The approver checks the tag, commit, test results, dependencies, artifact names, versions, architectures, hashes, licenses, security results, and absence of secrets or private material before approving signing.</p>
+
+    <h2>Signing service</h2>
+    <p>The project intends to use SignPath Foundation for eligible open-source release signing. Until that service is enabled, unsigned releases must be explicitly identified as unsigned. Development certificates are never represented as public production trust.</p>
+
+    <h2>Verification</h2>
+    <p>Download only from the official GitHub Releases page. Compare the file's SHA-256 hash with the published checksum and, for signed releases, verify the Authenticode signer.</p>
+
+    <p>The complete policy is available in <a href="https://github.com/saroo98/codex-usage-monitor/blob/main/CODE_SIGNING_POLICY.md">CODE_SIGNING_POLICY.md</a>.</p>
+  </main>
+  <footer><div class="shell footer-row"><span>MIT licensed · Maintained by @saroo98</span><a href="index.html">Home</a></div></footer>
+</body>
+</html>
