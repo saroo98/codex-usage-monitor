@@ -7,6 +7,6 @@ Official portable Windows packages are generated from the public source by [the 
 Current package:
 
 - `Usage-Monitor-for-Codex-5.0.0-Windows.zip`
-- SHA-256: `c540fd6a7c78fb696137b11d93e1cd846f4889939b342898af1436d5e8d23871`
+- SHA-256: `7152958049cce22e70380810cd7d5e8fd525577e73e50a958c45f8fc7f07ae00`
 
 The package contains the public Python and PowerShell-based Windows application, its installation utilities, and its automated tests.
