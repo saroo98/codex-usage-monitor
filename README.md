@@ -1,46 +1,64 @@
 # Usage Monitor for Codex
 
-A lightweight Windows desktop widget for monitoring Codex usage limits, reset times, and optional notifications.
+A lightweight Windows utility that monitors Codex usage limits and reset availability through the locally installed Codex App Server.
 
 [Website](https://saroo98.github.io/codex-usage-monitor/) · [Releases](https://github.com/saroo98/codex-usage-monitor/releases) · [Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [Code signing policy](CODE_SIGNING_POLICY.md)
 
-## Highlights
+## Current public release
 
-- Compact Medium, Small, and Extra Small desktop widgets
-- Five-hour, weekly, and dynamically discovered Codex limits
-- Native Windows notifications and optional email alerts
-- Tray controls, opacity, themes, click-through mode, and per-monitor positioning
-- Local-first storage with no telemetry by default
-- Portable Windows releases with reproducible public builds
+The current source is the script-based **Codex Usage Notifier 5.0.0 for Windows**. It includes:
 
-## Download
+- Structured Codex rate-limit reads without browser scraping
+- A compact always-available WPF usage widget
+- A modern desktop event popup
+- Windows toast, tray balloon, sound, and taskbar notification fallbacks
+- Two-read freshness checks and confirmation of apparent usage increases
+- Atomic redundant state files and pending-alert recovery
+- Scheduled Task installation, watchdog checks, diagnostics, and uninstall tools
 
-Official builds are published only through the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases). Verify the SHA-256 checksums supplied with each release before running downloaded files.
+The application source and tests are in [`app/`](app/). The portable release archive and SHA-256 checksum are published through the public GitHub Actions release workflow.
 
 ## Requirements
 
 - Windows 10 or Windows 11
-- Codex installed and signed in
+- Python 3.10 or newer
+- Current Codex CLI
+- A ChatGPT-backed Codex account signed in through Codex CLI
+
+## Install
+
+1. Download the ZIP from [GitHub Releases](https://github.com/saroo98/codex-usage-monitor/releases).
+2. Verify the SHA-256 value in `SHA256SUMS.txt`.
+3. Extract the archive.
+4. Open `CodexUsageNotifier` and run `INSTALL.cmd`.
+
+See [`app/README.md`](app/README.md) for complete installation, operation, diagnostics, and uninstall instructions.
+
+## Tests
+
+```powershell
+$env:PYTHONPATH = "app"
+python -m compileall -q app tools
+python -m unittest discover -s app/tests -v
+```
+
+The public CI workflow runs the test suite on Windows with the minimum supported Python version and the current stable Python line. It also verifies deterministic packaging.
 
 ## Privacy
 
-The application is designed to process Codex usage information locally. It does not collect prompts, conversations, repository contents, browser cookies, or authentication tokens. Optional email notifications transmit only the alert information required by the provider configured by the user. See [PRIVACY.md](PRIVACY.md).
+Processing is local by default. The application does not collect prompts, conversations, repository contents, browser cookies, passwords, or authentication tokens. See [PRIVACY.md](PRIVACY.md).
 
 ## Security
 
-Do not report vulnerabilities or include secrets in public issues. Follow [SECURITY.md](SECURITY.md).
+Do not include credentials, tokens, account identifiers, or private logs in public issues. Follow [SECURITY.md](SECURITY.md) for vulnerability reports.
 
-## Code signing policy
+## Code signing
 
-Release signing responsibilities, build provenance, and approval rules are documented in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md). The project maintainer, reviewer, and release approver role is assigned to [@saroo98](https://github.com/saroo98).
-
-## Contributing
-
-Public contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+The release process and SignPath-oriented approval rules are documented in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md). Unsigned artifacts must remain clearly identified until production signing is enabled.
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
 ## Disclaimer
 
