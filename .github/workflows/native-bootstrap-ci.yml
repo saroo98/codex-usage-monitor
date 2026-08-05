@@ -41,9 +41,11 @@ jobs:
           from __future__ import annotations
           import base64, hashlib, pathlib, tarfile
           root = pathlib.Path.cwd()
-          parts = sorted((root / '.bootstrap' / 'native').glob('part*.txt'))
-          if [p.name for p in parts] != ['part000.txt', 'part001.txt', 'part002.txt']:
-              raise SystemExit(f'Unexpected bootstrap parts: {[p.name for p in parts]}')
+          names = ['part000.txt', 'part001.txt', 'part002.txt']
+          parts = [root / '.bootstrap' / 'native' / name for name in names]
+          missing = [p.name for p in parts if not p.is_file()]
+          if missing:
+              raise SystemExit(f'Missing bootstrap parts: {missing}')
           encoded = ''.join(p.read_text(encoding='ascii').strip() for p in parts)
           archive = base64.b64decode(encoded, validate=True)
           expected = '2f2430ff811578553fc8564364b541d7dd0559403f6631ce5f98a79eadddda08'
