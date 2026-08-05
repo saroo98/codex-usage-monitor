@@ -1,0 +1,81 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+artifacts/
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+# Visual Studio and IDE state
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+_ReSharper*/
+*.DotSettings.user
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+.nuget/
+
+# Local application state
+*.log
+logs/
+state/
+local-data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key
+*.pem
+*.snk
+secrets.json
+appsettings.Development.json
+
+# Private and internal material
+private/
+internal/
+planning/
+roadmap/
+notes/
+docs/internal/
+.private/
+*.private.*
+
+# Release staging
+release-staging/
+unsigned/
+signed/
+checksums.local.*
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+~$*
