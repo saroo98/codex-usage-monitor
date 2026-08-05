@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.Notifications</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CodexUsageMonitor.Application/CodexUsageMonitor.Application.csproj" />
+    <ProjectReference Include="../CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+    <ProjectReference Include="../CodexUsageMonitor.Persistence/CodexUsageMonitor.Persistence.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+  </ItemGroup>
+</Project>

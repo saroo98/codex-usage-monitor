@@ -1,0 +1,380 @@
+<Window x:Class="CodexUsageMonitor.App.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:CodexUsageMonitor.App.Controls"
+        xmlns:vm="clr-namespace:CodexUsageMonitor.App.ViewModels"
+        Title="Codex Usage Monitor settings"
+        Width="920"
+        Height="670"
+        MinWidth="540"
+        MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="True"
+        AutomationProperties.Name="Codex Usage Monitor settings">
+  <Window.Resources>
+    <Style x:Key="SectionPanelStyle" TargetType="Grid">
+      <Setter Property="Visibility" Value="Collapsed" />
+    </Style>
+    <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,8,0,5" />
+    </Style>
+    <Style x:Key="HintStyle" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+    <Style x:Key="NavItemStyle" TargetType="ListBoxItem">
+      <Setter Property="Padding" Value="13,9" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+              <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceSubtleBrush}" /></Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+              </Trigger>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Chrome" Property="BorderThickness" Value="1" /></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition x:Name="NavigationColumn" Width="220" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <Border x:Name="NavigationRail" Grid.RowSpan="2" Background="{DynamicResource SurfaceSubtleBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="14,18">
+        <StackPanel DockPanel.Dock="Top" Margin="8,0,8,18">
+          <TextBlock Text="Codex Usage Monitor" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding Updates.CurrentVersion, StringFormat=Native Windows {0}}" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" Margin="0,3,0,0" />
+        </StackPanel>
+        <ListBox ItemsSource="{Binding Sections}"
+                 SelectedItem="{Binding SelectedSection}"
+                 ItemContainerStyle="{StaticResource NavItemStyle}"
+                 AutomationProperties.Name="Settings sections">
+          <ListBox.ItemTemplate>
+            <DataTemplate><TextBlock Text="{Binding}" /></DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <ComboBox x:Name="CompactNavigation"
+              Grid.Column="1"
+              Grid.Row="0"
+              Margin="22,18,22,0"
+              VerticalAlignment="Top"
+              ItemsSource="{Binding Sections}"
+              SelectedItem="{Binding SelectedSection}"
+              Visibility="Collapsed"
+              AutomationProperties.Name="Settings section" />
+
+    <ScrollViewer x:Name="ContentScrollViewer" Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <Grid Margin="30,26,34,30" MaxWidth="920" HorizontalAlignment="Stretch">
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.General}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="General" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Launch, privacy, and window behavior." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <CheckBox Content="Start with Windows" IsChecked="{Binding General.StartWithWindows}" AutomationProperties.HelpText="Uses the packaged startup task or the current-user Run key. No scheduled task is created." />
+              <CheckBox Content="Close the widget to the notification area" IsChecked="{Binding General.CloseToTray}" />
+              <CheckBox Content="Launch minimized" IsChecked="{Binding General.LaunchMinimized}" />
+              <CheckBox Content="Privacy mode" IsChecked="{Binding General.PrivacyMode}" />
+              <TextBlock Text="Masks account details in the widget, diagnostics, and notification content." Style="{StaticResource HintStyle}" />
+            </StackPanel></Border>
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <TextBlock Text="Language" Style="{StaticResource FieldLabelStyle}" />
+              <ComboBox SelectedValue="{Binding General.Language}" SelectedValuePath="Tag" Width="220" HorizontalAlignment="Left" AutomationProperties.Name="Display language">
+                <ComboBoxItem Content="English" Tag="en" />
+              </ComboBox>
+            </StackPanel></Border>
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Widget}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="Widget" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Size, visual treatment, placement, and pointer behavior." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <StackPanel Margin="0,0,14,0">
+                <TextBlock Text="Size" Style="{StaticResource FieldLabelStyle}" />
+                <ComboBox ItemsSource="{Binding Widget.Sizes}" SelectedItem="{Binding Widget.Size}" AutomationProperties.Name="Widget size" />
+                <TextBlock Text="Theme" Style="{StaticResource FieldLabelStyle}" />
+                <ComboBox ItemsSource="{Binding Widget.Themes}" SelectedItem="{Binding Widget.Theme}" AutomationProperties.Name="Color theme" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                <TextBlock Text="Opacity" Style="{StaticResource FieldLabelStyle}" />
+                <Slider Minimum="0.55" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Value="{Binding Widget.Opacity}" AutomationProperties.Name="Widget opacity" />
+                <TextBlock Text="{Binding Widget.Opacity, StringFormat={}{0:P0}}" Style="{StaticResource HintStyle}" />
+              </StackPanel>
+            </Grid></Border>
+            <Border Style="{StaticResource SettingsCardStyle}"><UniformGrid Columns="2">
+              <CheckBox Content="Always on top" IsChecked="{Binding Widget.Topmost}" />
+              <CheckBox Content="Lock position" IsChecked="{Binding Widget.Locked}" />
+              <CheckBox Content="Snap to screen edges" IsChecked="{Binding Widget.SnapToEdges}" />
+              <CheckBox Content="Reduce motion" IsChecked="{Binding Widget.ReduceMotion}" />
+              <CheckBox Content="Show reset time" IsChecked="{Binding Widget.ShowResetTime}" />
+              <CheckBox Content="Show account label" IsChecked="{Binding Widget.ShowAccountLabel}" />
+              <CheckBox Content="Click-through mode" IsChecked="{Binding Widget.ClickThrough}" ToolTip="Recover with Ctrl+Shift+U or the tray menu." />
+            </UniformGrid></Border>
+            <Button Content="Reset widget position" Command="{Binding ResetWidgetPositionCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Limits}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="Limits" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Choose which backend-discovered limit the widget emphasizes." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <TextBlock Text="Selection mode" Style="{StaticResource FieldLabelStyle}" />
+              <ComboBox ItemsSource="{Binding Limits.Modes}" SelectedItem="{Binding Limits.SelectionMode}" Width="300" HorizontalAlignment="Left" AutomationProperties.Name="Limit selection mode" />
+              <TextBlock Text="Explicit stable limit identity" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Text="{Binding Limits.ExplicitLimitIdentity, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Explicit limit identity" />
+              <TextBlock Text="Preferred model" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Text="{Binding Limits.PreferredModel, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Preferred model" />
+              <CheckBox Content="Show a second meter in Medium size" IsChecked="{Binding Limits.MediumDualMeter}" Margin="0,14,0,0" />
+              <TextBlock Text="Auto-lowest selects the authoritative limit with the least remaining capacity. Missing selections fall back safely." Style="{StaticResource HintStyle}" />
+            </StackPanel></Border>
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Notifications}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="Notifications" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Transition-based Windows alerts with durable de-duplication and quiet hours." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <CheckBox Content="Enable native notifications" IsChecked="{Binding Notifications.Enabled}" />
+              <TextBlock Text="Thresholds, remaining percent" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Text="{Binding Notifications.Thresholds, UpdateSourceTrigger=PropertyChanged}" Width="300" HorizontalAlignment="Left" AutomationProperties.Name="Notification thresholds" />
+              <TextBlock Text="{Binding Notifications.ValidationMessage}" Foreground="{DynamicResource DangerBrush}" AutomationProperties.LiveSetting="Polite" />
+              <TextBlock Text="Comma-separated values from 0 to 100. A notification is emitted only when a confirmed live reading crosses a threshold." Style="{StaticResource HintStyle}" />
+              <UniformGrid Columns="2" Margin="0,12,0,0">
+                <CheckBox Content="Notify on reset" IsChecked="{Binding Notifications.NotifyOnReset}" />
+                <CheckBox Content="Notify on connection loss" IsChecked="{Binding Notifications.NotifyOnConnectionLoss}" />
+                <CheckBox Content="Play sound" IsChecked="{Binding Notifications.PlaySound}" />
+                <CheckBox Content="Enable quiet hours" IsChecked="{Binding Notifications.QuietHoursEnabled}" />
+              </UniformGrid>
+              <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="120" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
+                <TextBlock Text="From" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBox Grid.Column="1" Text="{Binding Notifications.QuietHoursStart, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Quiet hours start" />
+                <TextBlock Grid.Column="2" Text="To" VerticalAlignment="Center" Margin="16,0,8,0" />
+                <TextBox Grid.Column="3" Text="{Binding Notifications.QuietHoursEnd, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Quiet hours end" />
+              </Grid>
+            </StackPanel></Border>
+            <Button Content="Send test notification" Command="{Binding TestNotificationCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Email}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="Email" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Optional provider-specific delivery. Secrets are stored in Windows Credential Manager or DPAPI-protected storage." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <StackPanel Margin="0,0,12,0">
+                <TextBlock Text="Provider" Style="{StaticResource FieldLabelStyle}" />
+                <ComboBox ItemsSource="{Binding Email.Providers}" SelectedItem="{Binding Email.Provider}" AutomationProperties.Name="Email provider" />
+                <TextBlock Text="Sender address" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding Email.SenderAddress, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Email sender address" />
+                <TextBlock Text="Recipient addresses" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding Email.RecipientAddress, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Email recipients" />
+                <TextBlock Text="{Binding Email.ValidationMessage}" Foreground="{DynamicResource DangerBrush}" AutomationProperties.LiveSetting="Polite" />
+                <CheckBox Content="Include masked account label" IsChecked="{Binding Email.IncludeAccountLabel}" Margin="0,14,0,0" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                <StackPanel IsEnabled="{Binding Email.IsGenericSmtp}">
+                  <TextBlock Text="SMTP host" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Text="{Binding Email.SmtpHost, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP server" />
+                  <UniformGrid Columns="2">
+                    <StackPanel Margin="0,0,8,0"><TextBlock Text="Port" Style="{StaticResource FieldLabelStyle}" /><TextBox Text="{Binding Email.SmtpPort, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP port" /></StackPanel>
+                    <StackPanel Margin="8,0,0,0"><TextBlock Text="Security" Style="{StaticResource FieldLabelStyle}" /><ComboBox ItemsSource="{Binding Email.SmtpSecurityModes}" SelectedItem="{Binding Email.SmtpSecurity}" AutomationProperties.Name="SMTP security" /></StackPanel>
+                  </UniformGrid>
+                  <TextBlock Text="Username, optional" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Text="{Binding Email.SmtpUsername, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP username" />
+                  <TextBlock Text="SMTP password or app password" Style="{StaticResource FieldLabelStyle}" />
+                  <PasswordBox x:Name="SmtpPasswordBox" AutomationProperties.Name="SMTP password" MaxLength="1024" />
+                  <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Store securely" Click="OnStoreSmtpPassword" Margin="0,0,8,0" />
+                    <Button Content="Remove" Click="OnRemoveSmtpPassword" IsEnabled="{Binding Email.CredentialStored}" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding Email.CredentialStatus}" Style="{StaticResource HintStyle}" AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+                <StackPanel IsEnabled="{Binding Email.IsOAuthProvider}" Margin="0,12,0,0">
+                  <TextBlock Text="OAuth client ID" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Text="{Binding Email.OAuthClientId, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="OAuth client ID" />
+                  <TextBlock Text="Microsoft tenant" Style="{StaticResource FieldLabelStyle}" />
+                  <TextBox Text="{Binding Email.OAuthTenant, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Email.IsMicrosoftOAuth}" AutomationProperties.Name="Microsoft tenant" />
+                  <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Content="Connect" Click="OnConnectOAuth" IsEnabled="{Binding Email.CanChangeOAuthConnection}" Margin="0,0,8,0" />
+                    <Button Content="Disconnect" Click="OnDisconnectOAuth" IsEnabled="{Binding Email.CanDisconnectOAuth}" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding Email.OAuthConnectionStatus}" Style="{StaticResource HintStyle}" AutomationProperties.LiveSetting="Polite" />
+                  <TextBlock Text="Provider registrations are supplied by the release owner. No OAuth client secret is embedded." Style="{StaticResource HintStyle}" Margin="0,8,0,0" />
+                </StackPanel>
+              </StackPanel>
+            </Grid></Border>
+            <Button Content="Send test email" Command="{Binding TestEmailCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Accounts}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="Accounts and Profiles" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Each enabled profile owns an isolated Codex App Server process and account history scope." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><Grid Height="330">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="220" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Content="Add" Command="{Binding AddProfileCommand}" Margin="0,0,8,0" />
+                  <Button Content="Remove" Command="{Binding RemoveProfileCommand}" />
+                </StackPanel>
+                <ListBox ItemsSource="{Binding Accounts.Profiles}" SelectedItem="{Binding Accounts.SelectedProfile}" DisplayMemberPath="Name" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" AutomationProperties.Name="Codex profiles" />
+              </DockPanel>
+              <StackPanel Grid.Column="2" DataContext="{Binding Accounts.SelectedProfile}">
+                <TextBlock Text="Profile name" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile name" />
+                <TextBlock Text="CODEX_HOME override" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding CodexHome, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile Codex home folder" />
+                <TextBlock Text="Leave blank to use the installed Codex CLI default. Paths are never copied into support bundles." Style="{StaticResource HintStyle}" />
+                <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,16,0,0" />
+                <CheckBox Content="Monitor in background" IsChecked="{Binding MonitorInBackground}" />
+              </StackPanel>
+            </Grid></Border>
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.History}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="History" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Local, account-isolated samples stored in SQLite." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <UniformGrid Columns="3">
+                <CheckBox Content="Record history" IsChecked="{Binding History.Enabled}" />
+                <StackPanel Margin="10,0"><TextBlock Text="Retention days" Style="{StaticResource FieldLabelStyle}" /><TextBox Text="{Binding History.RetentionDays, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="History retention days" /></StackPanel>
+                <StackPanel Margin="10,0"><TextBlock Text="Sample interval, minutes" Style="{StaticResource FieldLabelStyle}" /><TextBox Text="{Binding History.SampleIntervalMinutes, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="History sample interval in minutes" /></StackPanel>
+              </UniformGrid>
+              <controls:HistoryChart Points="{Binding History.Points}" Height="260" Margin="0,18,0,10" AutomationProperties.Name="Remaining usage history chart" />
+              <Button Content="Reload active limit history" Command="{Binding ReloadHistoryCommand}" HorizontalAlignment="Left" />
+            </StackPanel></Border>
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Updates}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="Updates" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Signed manifests, exact hashes, publisher pinning, staged installation, and automatic rollback." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}" AutomationProperties.Name="Update status">
+              <StackPanel>
+                <TextBlock Text="{Binding Updates.Status}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Margin="0,8,0,0"><Run Text="Current version: " /><Run Text="{Binding Updates.CurrentVersion}" FontWeight="SemiBold" /></TextBlock>
+                <TextBlock><Run Text="Available version: " /><Run Text="{Binding Updates.AvailableVersion, TargetNullValue=None}" FontWeight="SemiBold" /></TextBlock>
+                <TextBlock><Run Text="Last checked: " /><Run Text="{Binding Updates.LastChecked}" /></TextBlock>
+                <TextBlock Text="{Binding Updates.Progress}" Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <CheckBox Content="Check automatically" IsChecked="{Binding Updates.AutomaticChecks}" />
+              <CheckBox Content="Download verified portable updates automatically" IsChecked="{Binding Updates.AutomaticDownload}" />
+              <CheckBox Content="Install a prepared update when the app exits" IsChecked="{Binding Updates.InstallOnExit}" />
+              <TextBlock Text="Channel" Style="{StaticResource FieldLabelStyle}" />
+              <ComboBox ItemsSource="{Binding Updates.Channels}" SelectedItem="{Binding Updates.Channel}" Width="240" HorizontalAlignment="Left" AutomationProperties.Name="Update channel" />
+              <TextBlock Text="Check interval, hours" Style="{StaticResource FieldLabelStyle}" />
+              <TextBox Text="{Binding Updates.CheckIntervalHours, UpdateSourceTrigger=PropertyChanged}" Width="240" HorizontalAlignment="Left" AutomationProperties.Name="Update check interval in hours" />
+              <TextBlock Text="Portable updates are not installed until the signed manifest, SHA-256 digest, archive boundaries, and Authenticode publisher all verify." Style="{StaticResource HintStyle}" />
+            </StackPanel></Border>
+            <WrapPanel>
+              <Button Content="Check for updates" Command="{Binding CheckForUpdatesCommand}" Margin="0,0,8,8" />
+              <Button Content="Download and verify" Command="{Binding PrepareUpdateCommand}" Margin="0,0,8,8" />
+              <Button Content="Install and restart" Command="{Binding InstallUpdateCommand}" AutomationProperties.Name="Install verified update and restart" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,8" />
+            </WrapPanel>
+          </StackPanel>
+        </Grid>
+
+        <Grid>
+          <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Diagnostics}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+          <StackPanel>
+            <TextBlock Text="Diagnostics" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Safe operational checks and privacy-scanned support output." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <TextBox Text="{Binding Diagnostics.Summary, Mode=OneWay}"
+                       IsReadOnly="True"
+                       AcceptsReturn="True"
+                       TextWrapping="Wrap"
+                       VerticalScrollBarVisibility="Auto"
+                       FontFamily="Consolas"
+                       MinHeight="210"
+                       MaxHeight="320"
+                       AutomationProperties.Name="Runtime diagnostics summary" />
+              <TextBlock Text="Support bundles omit the database, credentials, OAuth tokens, raw account labels, email addresses, and user paths." Style="{StaticResource HintStyle}" Margin="0,12,0,0" />
+            </StackPanel></Border>
+            <Border Style="{StaticResource SettingsCardStyle}" AutomationProperties.Name="Legacy notifier migration">
+              <StackPanel>
+                <TextBlock Text="Previous notifier migration" FontSize="15" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Diagnostics.MigrationSummary}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,7,0,12" AutomationProperties.LiveSetting="Polite" />
+                <WrapPanel>
+                  <Button Content="Refresh status" Command="{Binding RefreshMigrationStatusCommand}" Margin="0,0,8,8" />
+                  <Button Content="Open backup folder" Command="{Binding OpenMigrationBackupCommand}" IsEnabled="{Binding Diagnostics.HasVerifiedMigrationBackup}" Margin="0,0,8,8" />
+                  <Button Content="Disable old tasks" Click="OnRetireLegacyTasks" IsEnabled="{Binding Diagnostics.CanRetireLegacyTasks}" Margin="0,0,8,8" />
+                  <Button Content="Restore old tasks" Click="OnRestoreLegacyTasks" IsEnabled="{Binding Diagnostics.CanRestoreLegacyTasks}" Margin="0,0,8,8" />
+                </WrapPanel>
+                <TextBlock Text="The old Scheduled Tasks are never removed automatically. Retirement is allowed only after a verified backup and a fresh live Codex reading." Style="{StaticResource HintStyle}" />
+              </StackPanel>
+            </Border>
+            <WrapPanel>
+              <Button Content="Refresh diagnostics" Command="{Binding RefreshDiagnosticsCommand}" Margin="0,0,8,8" />
+              <Button Content="Database integrity" Command="{Binding DatabaseIntegrityCommand}" Margin="0,0,8,8" />
+              <Button Content="Copy diagnostics" Click="OnCopyDiagnostics" Margin="0,0,8,8" />
+              <Button Content="Export support bundle" Click="OnExportSupportBundle" Margin="0,0,8,8" />
+              <Button Content="Open logs" Command="{Binding OpenLogsCommand}" Margin="0,0,8,8" />
+              <Button Content="Restart connection" Command="{Binding RestartConnectionCommand}" Margin="0,0,8,8" />
+              <Button Content="Reconcile startup" Command="{Binding ReconcileStartupCommand}" Margin="0,0,8,8" />
+              <Button Content="Rebuild tray icon" Command="{Binding RebuildTrayIconCommand}" Margin="0,0,8,8" />
+              <Button Content="Test notification" Command="{Binding TestNotificationCommand}" Margin="0,0,8,8" />
+            </WrapPanel>
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </ScrollViewer>
+
+    <Border Grid.Column="1" Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="22,14">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button Content="_Cancel" Command="{Binding CancelCommand}" MinWidth="88" Margin="0,0,8,0" IsCancel="True" />
+          <Button Content="_Save" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" MinWidth="88" IsDefault="True" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

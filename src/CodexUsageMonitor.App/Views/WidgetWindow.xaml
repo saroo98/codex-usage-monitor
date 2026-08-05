@@ -1,0 +1,192 @@
+<Window x:Class="CodexUsageMonitor.App.Views.WidgetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:settings="clr-namespace:CodexUsageMonitor.Core.Settings;assembly=CodexUsageMonitor.Core"
+        xmlns:vm="clr-namespace:CodexUsageMonitor.App.ViewModels"
+        Title="Codex Usage Monitor"
+        Width="{Binding Width}"
+        Height="{Binding Height}"
+        MinWidth="104"
+        MinHeight="30"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        AutomationProperties.Name="{Binding ToolTipText}"
+        AutomationProperties.HelpText="Right-click the tray icon for settings. Press Control Shift U to recover from click-through mode."
+        AutomationProperties.LiveSetting="Polite">
+  <Window.InputBindings>
+    <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
+  </Window.InputBindings>
+  <Window.Resources>
+    <Style x:Key="UsageProgressStyle" TargetType="ProgressBar">
+      <Setter Property="Height" Value="4" />
+      <Setter Property="Minimum" Value="0" />
+      <Setter Property="Maximum" Value="100" />
+      <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+      <Setter Property="Background" Value="{DynamicResource TrackBrush}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ProgressBar">
+            <Grid ClipToBounds="True">
+              <Border Background="{TemplateBinding Background}" CornerRadius="2" />
+              <Border x:Name="PART_Track" />
+              <Border x:Name="PART_Indicator"
+                      HorizontalAlignment="Left"
+                      Background="{TemplateBinding Foreground}"
+                      CornerRadius="2" />
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Warning}">
+          <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Critical}">
+          <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Depleted}">
+          <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Stale}">
+          <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Error}">
+          <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="StateDotStyle" TargetType="Ellipse">
+      <Setter Property="Fill" Value="{DynamicResource SuccessBrush}" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Warning}">
+          <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Critical}">
+          <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Depleted}">
+          <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Stale}">
+          <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Error}">
+          <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static vm:WidgetVisualState.Starting}">
+          <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </Window.Resources>
+  <Border x:Name="WidgetChrome"
+          Background="{DynamicResource SurfaceBrush}"
+          BorderBrush="{DynamicResource BorderBrush}"
+          BorderThickness="1"
+          CornerRadius="14"
+          ClipToBounds="True">
+    <Border.ToolTip>
+      <ToolTip Placement="Mouse" HasDropShadow="True">
+        <TextBlock Text="{Binding ToolTipText}" MaxWidth="300" LineHeight="19" />
+      </ToolTip>
+    </Border.ToolTip>
+    <Border.ContextMenu>
+      <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                   Opened="OnContextMenuOpened">
+        <MenuItem Header="Refresh now" Command="{Binding RefreshCommand}" InputGestureText="F5" />
+        <Separator />
+        <MenuItem Header="Medium" Command="{Binding SetSizeCommand}" CommandParameter="{x:Static settings:WidgetSize.Medium}" IsCheckable="True">
+          <MenuItem.Style>
+            <Style TargetType="MenuItem">
+              <Setter Property="IsChecked" Value="False" />
+              <Style.Triggers><DataTrigger Binding="{Binding Size}" Value="{x:Static settings:WidgetSize.Medium}"><Setter Property="IsChecked" Value="True" /></DataTrigger></Style.Triggers>
+            </Style>
+          </MenuItem.Style>
+        </MenuItem>
+        <MenuItem Header="Small" Command="{Binding SetSizeCommand}" CommandParameter="{x:Static settings:WidgetSize.Small}" IsCheckable="True">
+          <MenuItem.Style>
+            <Style TargetType="MenuItem">
+              <Setter Property="IsChecked" Value="False" />
+              <Style.Triggers><DataTrigger Binding="{Binding Size}" Value="{x:Static settings:WidgetSize.Small}"><Setter Property="IsChecked" Value="True" /></DataTrigger></Style.Triggers>
+            </Style>
+          </MenuItem.Style>
+        </MenuItem>
+        <MenuItem Header="Extra Small" Command="{Binding SetSizeCommand}" CommandParameter="{x:Static settings:WidgetSize.ExtraSmall}" IsCheckable="True">
+          <MenuItem.Style>
+            <Style TargetType="MenuItem">
+              <Setter Property="IsChecked" Value="False" />
+              <Style.Triggers><DataTrigger Binding="{Binding Size}" Value="{x:Static settings:WidgetSize.ExtraSmall}"><Setter Property="IsChecked" Value="True" /></DataTrigger></Style.Triggers>
+            </Style>
+          </MenuItem.Style>
+        </MenuItem>
+        <Separator />
+        <MenuItem Header="Lock position" Command="{Binding ToggleLockCommand}" IsCheckable="True" IsChecked="{Binding IsLocked}" />
+        <MenuItem Header="Click-through" Command="{Binding ToggleClickThroughCommand}" IsCheckable="True" IsChecked="{Binding IsClickThrough}" ToolTip="Recover with Ctrl+Shift+U" />
+        <MenuItem Header="Redeem reset credit…" Command="{Binding RedeemResetCreditCommand}" IsEnabled="{Binding CanRedeemResetCredit}" />
+        <Separator />
+        <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
+        <MenuItem Header="Exit" Command="{Binding ExitCommand}" />
+      </ContextMenu>
+    </Border.ContextMenu>
+
+    <Grid>
+      <Grid x:Name="MediumLayout" Margin="12,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid Grid.RowSpan="3" Width="26" Margin="0,0,9,0" VerticalAlignment="Center">
+          <Ellipse Width="24" Height="24" Fill="{DynamicResource SurfaceSubtleBrush}" />
+          <Path Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource AccentBrush}"
+                Data="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M8.8,7.7 L15.2,7.7 C16.36,7.7 17.3,8.64 17.3,9.8 L17.3,14.2 C17.3,15.36 16.36,16.3 15.2,16.3 L8.8,16.3 C7.64,16.3 6.7,15.36 6.7,14.2 L6.7,9.8 C6.7,8.64 7.64,7.7 8.8,7.7 Z" />
+          <Ellipse Style="{StaticResource StateDotStyle}" Width="6" Height="6" HorizontalAlignment="Right" VerticalAlignment="Bottom" Stroke="{DynamicResource SurfaceBrush}" StrokeThickness="1" />
+        </Grid>
+        <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="{Binding LimitLabel}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="94" />
+          <TextBlock Text="  •  " Foreground="{DynamicResource TextMutedBrush}" FontSize="10" />
+          <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" />
+        </StackPanel>
+        <TextBlock Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Text="{Binding RemainingText}" FontSize="21" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
+        <ProgressBar Grid.Column="1" Grid.Row="1" Style="{StaticResource UsageProgressStyle}" Value="{Binding RemainingPercent, Mode=OneWay}" Margin="0,4,0,3" AutomationProperties.Name="Remaining usage percentage" />
+        <Grid Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="2">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+          <TextBlock Text="{Binding ResetText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="9.5" TextTrimming="CharacterEllipsis" />
+          <TextBlock Grid.Column="1" Text="{Binding AccountText}" Foreground="{DynamicResource TextMutedBrush}" FontSize="9.5" MaxWidth="72" TextTrimming="CharacterEllipsis" Margin="8,0,0,0">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ShowAccount}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Grid>
+      </Grid>
+
+      <Grid x:Name="SmallLayout" Margin="10,7" Visibility="Collapsed">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <Ellipse Style="{StaticResource StateDotStyle}" Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0" />
+        <Grid Grid.Column="1">
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+          <TextBlock Text="{Binding LimitLabel}" FontSize="10.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          <ProgressBar Grid.Row="1" Style="{StaticResource UsageProgressStyle}" Value="{Binding RemainingPercent, Mode=OneWay}" Margin="0,4,0,0" AutomationProperties.Name="Remaining usage percentage" />
+        </Grid>
+        <TextBlock Grid.Column="2" Text="{Binding RemainingText}" FontSize="17" FontWeight="SemiBold" Margin="9,0,0,0" VerticalAlignment="Center" />
+      </Grid>
+
+      <Grid x:Name="ExtraSmallLayout" Margin="9,5" Visibility="Collapsed">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <Ellipse Style="{StaticResource StateDotStyle}" Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,6,0" />
+        <ProgressBar Grid.Column="1" Style="{StaticResource UsageProgressStyle}" Value="{Binding RemainingPercent, Mode=OneWay}" VerticalAlignment="Center" AutomationProperties.Name="Remaining usage percentage" />
+        <TextBlock Grid.Column="2" Text="{Binding RemainingText}" FontSize="14" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center" />
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

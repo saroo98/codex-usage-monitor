@@ -3,73 +3,102 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A lightweight Windows desktop utility for monitoring Codex usage limits and reset availability.">
-  <title>Usage Monitor for Codex</title>
+  <meta name="description" content="A lightweight native Windows widget for monitoring Codex usage limits and reset times locally.">
+  <meta property="og:title" content="Codex Usage Monitor">
+  <meta property="og:description" content="Confirmed Codex usage, visible without the noise.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://saroo98.github.io/codex-usage-monitor/">
+  <title>Codex Usage Monitor</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="shell">
-    <nav aria-label="Primary navigation">
-      <a class="brand" href="index.html">Usage Monitor for Codex</a>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <nav class="shell" aria-label="Primary navigation">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Codex Usage Monitor</a>
       <div class="nav-links">
         <a href="#features">Features</a>
         <a href="privacy.html">Privacy</a>
         <a href="support.html">Support</a>
-        <a href="code-signing.html">Code signing</a>
         <a href="https://github.com/saroo98/codex-usage-monitor">GitHub</a>
       </div>
     </nav>
   </header>
 
-  <main>
+  <main id="content">
     <section class="hero shell">
-      <div class="eyebrow">Open-source Windows utility</div>
-      <h1>Codex usage at a glance.</h1>
-      <p class="lead">A local Windows notifier with a compact live widget, reset alerts, and reliability checks. It reads structured rate-limit data through the locally installed Codex App Server.</p>
-      <div class="actions">
-        <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">View releases</a>
-        <a class="button secondary" href="https://github.com/saroo98/codex-usage-monitor">View source</a>
+      <div class="hero-copy">
+        <p class="kicker">Native Windows utility · Version 6.0</p>
+        <h1>Confirmed Codex usage, always in sight.</h1>
+        <p class="lead">A quiet desktop widget that reads the local Codex App Server, preserves the last trustworthy result, and tells you when data is delayed, stale, or unavailable.</p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">Open official releases</a>
+          <a class="text-link" href="https://github.com/saroo98/codex-usage-monitor">Inspect the source <span aria-hidden="true">→</span></a>
+        </div>
+        <ul class="facts" aria-label="Product facts">
+          <li>Windows 10 19041+</li>
+          <li>x64 and Arm64</li>
+          <li>No project telemetry</li>
+        </ul>
       </div>
 
-      <div class="widget-preview" aria-label="Example compact usage widget">
-        <div class="widget-row">
-          <div class="widget">
-            <div class="ring">!</div>
-            <div><strong>0% left</strong><span>Resets in 5d 15h</span></div>
-          </div>
+      <div class="monitor-stage" aria-label="Illustration of the Codex Usage Monitor widget">
+        <div class="status-line"><span class="status-dot"></span>Live · refreshed just now</div>
+        <div class="meter-row">
+          <div class="meter" aria-hidden="true"><span>68</span><small>%</small></div>
+          <div><p class="meter-label">Weekly usage remaining</p><strong>Resets in 3d 8h</strong></div>
+        </div>
+        <div class="mini-history" aria-hidden="true">
+          <i style="height:36%"></i><i style="height:42%"></i><i style="height:39%"></i><i style="height:58%"></i><i style="height:66%"></i><i style="height:73%"></i><i style="height:68%"></i>
+        </div>
+        <div class="stage-footer"><span>Default profile</span><span>Local history</span></div>
+      </div>
+    </section>
+
+    <section id="features" class="feature-section">
+      <div class="shell feature-layout">
+        <div>
+          <p class="kicker">Built for long-running desktop use</p>
+          <h2>Small surface. Deliberate failure states.</h2>
+          <p class="section-copy">The monitor does not turn a timeout into a false zero. It keeps confirmed data visible and labels authentication loss, stale readings, Codex restarts, update recovery, and migration explicitly.</p>
+        </div>
+        <div class="feature-list">
+          <article><span>01</span><div><h3>Glanceable widget</h3><p>Three sizes, precise reset timing, one restrained accent, and no continuous animation.</p></div></article>
+          <article><span>02</span><div><h3>Local-first monitoring</h3><p>Multi-profile App Server sessions, local history, bounded logs, and no browser scraping.</p></div></article>
+          <article><span>03</span><div><h3>Accessible by default</h3><p>Keyboard access, visible focus, UI Automation, High Contrast, reduced motion, and adaptive layouts.</p></div></article>
+          <article><span>04</span><div><h3>Transactional updates</h3><p>Signed manifests, exact hashes, path-safe extraction, startup qualification, and rollback.</p></div></article>
         </div>
       </div>
     </section>
 
-    <section id="features" class="shell">
-      <h2>Compact monitoring with visible failure states.</h2>
-      <p class="section-intro">The current public release is a Python and PowerShell application for Windows 10 and Windows 11.</p>
-      <div class="grid">
-        <article class="card"><h3>Live widget</h3><p>A small WPF desktop widget shows the confirmed remaining percentage and reset countdown.</p></article>
-        <article class="card"><h3>Reset alerts</h3><p>A modern popup is backed by toast, tray, sound, and taskbar notification channels.</p></article>
-        <article class="card"><h3>Structured data</h3><p>Reads Codex rate limits through App Server methods instead of scraping a browser page.</p></article>
-        <article class="card"><h3>Reliability checks</h3><p>Confirms apparent increases, rejects regressed windows, and preserves pending alerts across restarts.</p></article>
-        <article class="card"><h3>Local-first privacy</h3><p>No project telemetry and no collection of prompts, conversations, cookies, passwords, or tokens.</p></article>
-        <article class="card"><h3>Open release process</h3><p>MIT source, public tests, deterministic ZIP packaging, SHA-256 checksums, and build attestations.</p></article>
+    <section class="shell privacy-section">
+      <div class="privacy-copy">
+        <p class="kicker">Privacy is an operating constraint</p>
+        <h2>Your usage stays on your PC.</h2>
+        <p>The project runs no analytics service and does not collect prompts, conversations, repository contents, browser cookies, ChatGPT passwords, or Codex authentication tokens.</p>
+        <a class="text-link" href="privacy.html">Read the privacy policy <span aria-hidden="true">→</span></a>
       </div>
+      <dl class="privacy-grid">
+        <div><dt>Codex access</dt><dd>Through the locally installed Codex CLI and App Server.</dd></div>
+        <div><dt>History</dt><dd>Stored locally with configurable retention.</dd></div>
+        <div><dt>Diagnostics</dt><dd>Bounded, redacted, and user-controlled.</dd></div>
+        <div><dt>Release integrity</dt><dd>Checksums, SBOM, signed metadata, and verified packages.</dd></div>
+      </dl>
     </section>
 
-    <section class="shell">
-      <div class="card">
-        <h2>Download from the official repository</h2>
-        <p>Official release archives and checksums are published through GitHub. The current package requires Python 3.10 or newer and a signed-in Codex CLI installation.</p>
-        <div class="actions" style="justify-content:flex-start">
-          <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">Open releases</a>
-          <a class="button secondary" href="privacy.html">Read privacy policy</a>
-        </div>
+    <section class="download-section">
+      <div class="shell download-row">
+        <div><p class="kicker">Official GitHub releases</p><h2>Choose the package for your PC.</h2></div>
+        <a class="button primary" href="https://github.com/saroo98/codex-usage-monitor/releases">Open downloads</a>
       </div>
     </section>
   </main>
 
   <footer>
     <div class="shell footer-row">
-      <span>MIT licensed · Maintained by @saroo98</span>
-      <span>Independent project. Not affiliated with or endorsed by OpenAI.</span>
+      <span>MIT licensed · Independent open-source project</span>
+      <div><a href="privacy.html">Privacy</a><a href="support.html">Support</a><a href="code-signing.html">Release integrity</a></div>
     </div>
   </footer>
 </body>

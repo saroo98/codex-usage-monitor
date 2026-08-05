@@ -1,0 +1,24 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodexUsageMonitor.Application/CodexUsageMonitor.Application.csproj" />
+    <Project Path="src/CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+    <Project Path="src/CodexUsageMonitor.Codex/CodexUsageMonitor.Codex.csproj" />
+    <Project Path="src/CodexUsageMonitor.Persistence/CodexUsageMonitor.Persistence.csproj" />
+    <Project Path="src/CodexUsageMonitor.Notifications/CodexUsageMonitor.Notifications.csproj" />
+    <Project Path="src/CodexUsageMonitor.Email/CodexUsageMonitor.Email.csproj" />
+    <Project Path="src/CodexUsageMonitor.Updater/CodexUsageMonitor.Updater.csproj" />
+    <Project Path="src/CodexUsageMonitor.Windows/CodexUsageMonitor.Windows.csproj" />
+    <Project Path="src/CodexUsageMonitor.Migration/CodexUsageMonitor.Migration.csproj" />
+    <Project Path="src/CodexUsageMonitor.App/CodexUsageMonitor.App.csproj" />
+    <Project Path="src/CodexUsageMonitor.UpdaterHost/CodexUsageMonitor.UpdaterHost.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CodexUsageMonitor.UnitTests/CodexUsageMonitor.UnitTests.csproj" />
+    <Project Path="tests/CodexUsageMonitor.ContractTests/CodexUsageMonitor.ContractTests.csproj" />
+    <Project Path="tests/CodexUsageMonitor.IntegrationTests/CodexUsageMonitor.IntegrationTests.csproj" />
+    <Project Path="tests/CodexUsageMonitor.MigrationTests/CodexUsageMonitor.MigrationTests.csproj" />
+    <Project Path="tests/CodexUsageMonitor.PackagingTests/CodexUsageMonitor.PackagingTests.csproj" />
+    <Project Path="tests/CodexUsageMonitor.PerformanceTests/CodexUsageMonitor.PerformanceTests.csproj" />
+    <Project Path="tests/CodexUsageMonitor.UiTests/CodexUsageMonitor.UiTests.csproj" />
+  </Folder>
+</Solution>

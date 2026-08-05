@@ -1,0 +1,10 @@
+<Project Sdk="MSTest.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.UiTests</RootNamespace>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/CodexUsageMonitor.App/CodexUsageMonitor.App.csproj" />
+  </ItemGroup>
+</Project>

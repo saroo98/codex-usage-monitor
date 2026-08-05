@@ -1,0 +1,8 @@
+{
+  "description": "Redacted primary-screen render matrix. PNG evidence is generated under ignored artifacts/ui-evidence.",
+  "themes": ["Light", "Dark", "HighContrast"],
+  "scales": [1.0, 1.25, 1.5, 2.0],
+  "screens": ["settings", "onboarding", "reset-confirmation", "oauth-authorization"],
+  "expectedScreenshotCount": 48,
+  "privacy": "Every screen uses synthetic labels and paths. No local account or workspace data is loaded."
+}

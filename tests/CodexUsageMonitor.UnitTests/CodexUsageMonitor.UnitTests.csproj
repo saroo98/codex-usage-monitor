@@ -1,0 +1,13 @@
+<Project Sdk="MSTest.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.UnitTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/CodexUsageMonitor.Application/CodexUsageMonitor.Application.csproj" />
+    <ProjectReference Include="../../src/CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+    <ProjectReference Include="../../src/CodexUsageMonitor.Persistence/CodexUsageMonitor.Persistence.csproj" />
+    <ProjectReference Include="../../src/CodexUsageMonitor.Email/CodexUsageMonitor.Email.csproj" />
+    <ProjectReference Include="../../src/CodexUsageMonitor.Updater/CodexUsageMonitor.Updater.csproj" />
+  </ItemGroup>
+</Project>

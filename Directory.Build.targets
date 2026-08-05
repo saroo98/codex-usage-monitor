@@ -1,0 +1,11 @@
+<Project>
+  <Target Name="RejectPreviewDependencies" BeforeTargets="Restore">
+    <ItemGroup>
+      <_PreviewPackage Include="@(PackageReference)" Condition="$([System.String]::Copy('%(PackageReference.Version)').Contains('-'))" />
+    </ItemGroup>
+    <Error Condition="'@(_PreviewPackage)' != ''" Text="Preview dependencies are prohibited: @(_PreviewPackage)" />
+  </Target>
+  <Target Name="ValidateReleaseVersion" BeforeTargets="Pack" Condition="'$(Configuration)' == 'Release'">
+    <Error Condition="'$(VersionPrefix)' == ''" Text="VersionPrefix is required for release builds." />
+  </Target>
+</Project>

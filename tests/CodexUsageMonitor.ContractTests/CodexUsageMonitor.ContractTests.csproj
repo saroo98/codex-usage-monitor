@@ -1,0 +1,10 @@
+<Project Sdk="MSTest.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CodexUsageMonitor.ContractTests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/CodexUsageMonitor.Core/CodexUsageMonitor.Core.csproj" />
+    <ProjectReference Include="../../src/CodexUsageMonitor.Codex/CodexUsageMonitor.Codex.csproj" />
+  </ItemGroup>
+</Project>

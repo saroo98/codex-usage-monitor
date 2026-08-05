@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Security vulnerability
-    url: https://github.com/saroo98/codex-usage-monitor/security
-    about: Use the Security tab and private vulnerability reporting when available. Do not publish vulnerability details in an issue.
-  - name: Support policy
-    url: https://github.com/saroo98/codex-usage-monitor/blob/main/SUPPORT.md
-    about: Review required diagnostic and privacy guidance before opening an issue.

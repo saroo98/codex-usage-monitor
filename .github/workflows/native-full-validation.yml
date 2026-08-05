@@ -1,0 +1,56 @@
+name: Native full validation
+
+on:
+  push:
+    branches:
+      - codex/native-6.0-integration
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-full-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  NUGET_XMLDOC_MODE: skip
+
+jobs:
+  validate:
+    name: Release x64 and Arm64 validation
+    runs-on: windows-2025
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install repository-pinned .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Capture verification evidence
+        shell: pwsh
+        run: ./eng/capture-verification-evidence.ps1 -Configuration Release -Architecture All -SkipUi
+
+      - name: Build and independently verify unsigned release candidate
+        shell: pwsh
+        run: ./eng/package-release.ps1 -Version 6.0.0 -OutputRoot artifacts/release-candidate -Configuration Release
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-full-verification-${{ github.sha }}
+          path: |
+            artifacts/TestResults/**
+            artifacts/verification/**
+            artifacts/release-candidate/**
+          if-no-files-found: error
+          retention-days: 30

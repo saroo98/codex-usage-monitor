@@ -1,0 +1,27 @@
+{
+  "description": "Redacted widget render matrix. PNG evidence is generated under ignored artifacts/ui-evidence.",
+  "themes": ["Light", "Dark", "HighContrast"],
+  "scales": [1.0, 1.25, 1.5, 2.0],
+  "sizes": {
+    "Medium": [208, 60],
+    "Small": [148, 42],
+    "ExtraSmall": [104, 30]
+  },
+  "states": [
+    "starting",
+    "live",
+    "warning",
+    "critical",
+    "depleted",
+    "delayed",
+    "stale",
+    "offline",
+    "authentication-required",
+    "codex-unavailable",
+    "updating",
+    "recovery",
+    "migration"
+  ],
+  "expectedScreenshotCount": 468,
+  "privacy": "Synthetic labels only. Account identifiers, workspace labels, paths, and credentials are prohibited."
+}
