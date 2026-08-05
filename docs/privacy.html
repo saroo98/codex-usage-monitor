@@ -8,37 +8,21 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="shell"><nav><a class="brand" href="index.html">Usage Monitor for Codex</a><div class="nav-links"><a href="index.html">Home</a><a href="support.html">Support</a><a href="code-signing.html">Code signing</a><a href="https://github.com/saroo98/codex-usage-monitor">GitHub</a></div></nav></header>
-  <main class="shell content">
-    <div class="eyebrow">Policy</div>
+  <header class="shell"><nav><a class="brand" href="index.html">Usage Monitor for Codex</a><div class="nav-links"><a href="index.html">Home</a><a href="support.html">Support</a><a href="https://github.com/saroo98/codex-usage-monitor">GitHub</a></div></nav></header>
+  <main class="shell policy">
     <h1>Privacy</h1>
-    <p>Last updated: August 5, 2026</p>
-
-    <h2>Local processing</h2>
-    <p>The application may store Codex limit percentages, reset times, account and workspace identifiers needed for isolation, settings, widget position, notification receipts, and optional history on the user's Windows device.</p>
-
+    <p>Usage Monitor for Codex is designed as a local Windows utility. The current release contains no project-operated telemetry, analytics, advertising, or behavioral tracking.</p>
+    <h2>Local data</h2>
+    <p>The application may store Codex usage percentages, reset times, minimal account or plan metadata, configuration, confirmed and pending notification state, widget position, heartbeats, and diagnostic logs on the user's computer.</p>
     <h2>Data not collected</h2>
-    <p>The application is not designed to collect prompts, conversations, repository contents, browser cookies, session cookies, or authentication tokens. Telemetry, analytics, advertising, and behavioral tracking are disabled by default.</p>
-
-    <h2>Network activity</h2>
-    <ul>
-      <li>Codex usage data is obtained through the locally installed Codex App Server.</li>
-      <li>Optional update checks may contact this repository's GitHub Releases endpoint.</li>
-      <li>Optional email alerts contact only the provider configured by the user and send only the information needed for the alert.</li>
-    </ul>
-
-    <h2>Credentials</h2>
-    <p>Email credentials or provider tokens, when configured, must use Windows-protected credential storage. They must not be written to logs, settings, diagnostics, or the source repository.</p>
-
+    <p>The application is not designed to collect prompts, conversations, repository contents, browser cookies, session cookies, passwords, or authentication tokens.</p>
+    <h2>Network use</h2>
+    <p>The notifier communicates with the locally installed Codex App Server. Codex itself may contact OpenAI for authentication and usage information. Opening the project website or GitHub release page contacts those services only when the user chooses to open them.</p>
     <h2>Deletion</h2>
-    <p>Users can remove local history and settings from the application or delete its local application-data folder after exiting the program.</p>
-
-    <h2>Third parties</h2>
-    <p>OpenAI Codex, GitHub, Microsoft, Google, and any selected email provider operate under their own policies.</p>
-
-    <h2>Contact</h2>
-    <p>Use the repository's public issue tracker only for questions containing no personal data or credentials. Security-sensitive matters must follow the <a href="https://github.com/saroo98/codex-usage-monitor/blob/main/SECURITY.md">security policy</a>.</p>
+    <p>Local notifier data can be removed by uninstalling the notifier and deleting its data folder after its processes and Scheduled Tasks have stopped.</p>
+    <h2>Support</h2>
+    <p>Never place credentials, tokens, account identifiers, personal data, or unredacted logs in public issues. Use the repository security policy for sensitive reports.</p>
   </main>
-  <footer><div class="shell footer-row"><span>MIT licensed · Maintained by @saroo98</span><a href="index.html">Home</a></div></footer>
+  <footer><div class="shell footer-row"><span>Last updated August 5, 2026</span><span><a href="https://github.com/saroo98/codex-usage-monitor/blob/main/PRIVACY.md">Canonical policy</a></span></div></footer>
 </body>
 </html>
