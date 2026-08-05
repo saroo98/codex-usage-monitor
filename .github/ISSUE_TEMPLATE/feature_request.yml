@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest a focused improvement to the public application
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user problem and expected outcome. Do not include private planning documents, credentials, account data, or internal development material.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired behavior
+      description: Describe the observable result, not an internal roadmap.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional existing workarounds or simpler approaches.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I searched existing issues and releases for this capability.
+          required: true
+        - label: This request contains no private or sensitive information.
+          required: true
