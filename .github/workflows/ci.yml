@@ -43,12 +43,16 @@ jobs:
           PYTHONPATH: app
         run: python -m unittest discover -s app/tests -v
 
-      - name: Verify deterministic packaging
+      - name: Verify deterministic primary and backup packages
         shell: pwsh
         run: |
           python tools/package.py
-          $first = (Get-FileHash dist/Usage-Monitor-for-Codex-5.0.0-Windows.zip -Algorithm SHA256).Hash
-          Remove-Item dist/Usage-Monitor-for-Codex-5.0.0-Windows.zip, dist/SHA256SUMS.txt -Force
+          $primary = Get-Item dist/Usage-Monitor-for-Codex-5.0.0-Windows.zip
+          $backup = Get-Item dist/Usage-Monitor-for-Codex-5.0.0-Windows-BACKUP.zip
+          $first = (Get-FileHash $primary.FullName -Algorithm SHA256).Hash
+          $backupHash = (Get-FileHash $backup.FullName -Algorithm SHA256).Hash
+          if ($first -ne $backupHash -or $primary.Length -ne $backup.Length) { throw "Backup archive does not match the primary archive." }
+          Remove-Item dist/*.zip, dist/SHA256SUMS.txt -Force
           python tools/package.py
           $second = (Get-FileHash dist/Usage-Monitor-for-Codex-5.0.0-Windows.zip -Algorithm SHA256).Hash
           if ($first -ne $second) { throw "Package output is not reproducible." }
