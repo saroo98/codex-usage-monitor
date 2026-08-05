@@ -46,6 +46,7 @@ jobs:
         run: python tools/package.py
 
       - name: Verify committed and generated checksums
+        id: package
         shell: pwsh
         run: |
           $expected = (Get-Content "$env:RUNNER_TEMP\expected-SHA256SUMS.txt" -Raw).Trim()
@@ -53,8 +54,74 @@ jobs:
           if ($expected -ne $generated) { throw "Generated package does not match the committed checksum." }
           $parts = $generated -split "\s+\*", 2
           if ($parts.Count -ne 2) { throw "Invalid checksum format." }
-          $actual = (Get-FileHash (Join-Path dist $parts[1]) -Algorithm SHA256).Hash.ToLowerInvariant()
+          $package = Join-Path dist $parts[1]
+          $actual = (Get-FileHash $package -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actual -ne $parts[0].ToLowerInvariant()) { throw "Checksum verification failed." }
+          "filename=$($parts[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sha256=$actual" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Create or update GitHub release
+        id: release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content app/VERSION -Raw).Trim()
+          if (-not $version) { throw "app/VERSION is empty." }
+          $tag = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "v$version" }
+          gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag "dist/${{ steps.package.outputs.filename }}" dist/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $tag "dist/${{ steps.package.outputs.filename }}" dist/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Codex Usage Notifier $version" --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw "GitHub Release publication failed." }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Verify published release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          EXPECTED_FILE: ${{ steps.package.outputs.filename }}
+          EXPECTED_SHA256: ${{ steps.package.outputs.sha256 }}
+        run: |
+          $verifyDir = Join-Path $env:RUNNER_TEMP "release-verify"
+          New-Item -ItemType Directory -Path $verifyDir -Force | Out-Null
+          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern $env:EXPECTED_FILE --pattern "SHA256SUMS.txt" --dir $verifyDir --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Unable to download published release assets." }
+
+          $line = (Get-Content (Join-Path $verifyDir "SHA256SUMS.txt") -Raw).Trim()
+          $parts = $line -split "\s+\*", 2
+          if ($parts.Count -ne 2 -or $parts[1] -ne $env:EXPECTED_FILE) { throw "Published checksum file is invalid." }
+          $asset = Join-Path $verifyDir $env:EXPECTED_FILE
+          $actual = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:EXPECTED_SHA256.ToLowerInvariant()) { throw "Published release checksum verification failed." }
+
+          $releaseUrl = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json url --jq .url
+          $marker = @(
+            "# Published release",
+            "",
+            "- Release: [$env:RELEASE_TAG]($releaseUrl)",
+            "- Package: ``$env:EXPECTED_FILE``",
+            "- SHA-256: ``$actual``",
+            "- Verification: downloaded from GitHub Releases and hashed successfully by the public release workflow"
+          ) -join "`n"
+          Set-Content -Path dist/RELEASED.md -Value $marker -Encoding utf8
+
+      - name: Record verified release
+        if: github.ref_type != 'tag'
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/RELEASED.md
+          if (-not (git diff --cached --quiet)) {
+            git commit -m "Record verified public release"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          }
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
@@ -67,81 +134,7 @@ jobs:
           retention-days: 30
 
       - name: Attest release package
+        continue-on-error: true
         uses: actions/attest@v4
         with:
           subject-checksums: dist/SHA256SUMS.txt
-
-      - name: Select release target
-        id: release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $version = (Get-Content app/VERSION -Raw).Trim()
-          if (-not $version) { throw "app/VERSION is empty." }
-          if ($env:GITHUB_REF_TYPE -eq "tag") {
-            $tag = $env:GITHUB_REF_NAME
-            $publish = "true"
-          } else {
-            $tag = "v$version"
-            gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName 2>$null | Out-Null
-            $releaseExists = $LASTEXITCODE -eq 0
-            $publish = if ((Test-Path dist/RELEASED.md) -and $releaseExists) { "false" } else { "true" }
-          }
-          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "publish=$publish" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
-      - name: Publish GitHub release
-        if: steps.release.outputs.publish == 'true'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ steps.release.outputs.tag }}
-          target_commitish: ${{ github.sha }}
-          name: Codex Usage Notifier ${{ steps.release.outputs.version }}
-          generate_release_notes: true
-          files: |
-            dist/*.zip
-            dist/SHA256SUMS.txt
-
-      - name: Verify published release assets
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          $verifyDir = Join-Path $env:RUNNER_TEMP "release-verify"
-          New-Item -ItemType Directory -Path $verifyDir -Force | Out-Null
-          gh release download $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --pattern "Usage-Monitor-for-Codex-*-Windows.zip" --pattern "SHA256SUMS.txt" --dir $verifyDir --clobber
-          if ($LASTEXITCODE -ne 0) { throw "Unable to download published release assets." }
-
-          $line = (Get-Content (Join-Path $verifyDir "SHA256SUMS.txt") -Raw).Trim()
-          $parts = $line -split "\s+\*", 2
-          if ($parts.Count -ne 2) { throw "Published checksum file is invalid." }
-          $asset = Join-Path $verifyDir $parts[1]
-          if (-not (Test-Path $asset)) { throw "Published release ZIP is missing." }
-          $actual = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $parts[0].ToLowerInvariant()) { throw "Published release checksum verification failed." }
-
-          $release = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json url | ConvertFrom-Json
-          $marker = @"
-          # Published release
-
-          - Release: [$env:RELEASE_TAG]($($release.url))
-          - Package: `$($parts[1])`
-          - SHA-256: `$actual`
-          - Verification: downloaded from GitHub Releases and hashed successfully by the public release workflow
-          "@
-          Set-Content -Path dist/RELEASED.md -Value $marker -Encoding utf8
-
-      - name: Record verified release
-        if: github.ref_type != 'tag'
-        shell: pwsh
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/RELEASED.md
-          if (-not (git diff --cached --quiet)) {
-            git commit -m "Record verified public release"
-            git push
-          }
