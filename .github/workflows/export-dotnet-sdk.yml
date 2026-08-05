@@ -1,0 +1,49 @@
+name: Export repository-pinned .NET SDK
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/export-dotnet-sdk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-linux-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install repository-pinned SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.302'
+
+      - name: Verify SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(dotnet --version)" = "10.0.302"
+          dotnet --info
+
+      - name: Package SDK deterministically
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/sdk-export"
+          tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner \
+            -C "$(dirname "$DOTNET_ROOT")" -cJf "$RUNNER_TEMP/sdk-export/dotnet-sdk-10.0.302-linux-x64.tar.xz" "$(basename "$DOTNET_ROOT")"
+          sha256sum "$RUNNER_TEMP/sdk-export/dotnet-sdk-10.0.302-linux-x64.tar.xz" > "$RUNNER_TEMP/sdk-export/SHA256SUMS.txt"
+
+      - name: Upload SDK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dotnet-sdk-10.0.302-linux-x64
+          path: ${{ runner.temp }}/sdk-export
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
