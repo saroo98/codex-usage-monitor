@@ -16,7 +16,23 @@ The current source is the script-based **Codex Usage Notifier 5.0.0 for Windows*
 - Atomic redundant state files and pending-alert recovery
 - Scheduled Task installation, watchdog checks, diagnostics, and uninstall tools
 
-The application source and tests are in [`app/`](app/). The portable release archive and SHA-256 checksum are published through the public GitHub Actions release workflow.
+The application source and tests are in [`app/`](app/).
+
+### Downloads
+
+- [Primary portable ZIP](https://github.com/saroo98/codex-usage-monitor/releases/download/v5.0.0/Usage-Monitor-for-Codex-5.0.0-Windows.zip)
+- [Backup portable ZIP](https://github.com/saroo98/codex-usage-monitor/releases/download/v5.0.0/Usage-Monitor-for-Codex-5.0.0-Windows-BACKUP.zip)
+- [SHA-256 checksums](https://github.com/saroo98/codex-usage-monitor/releases/download/v5.0.0/SHA256SUMS.txt)
+
+Both archives are **66,363 bytes** and are byte-for-byte identical.
+
+SHA-256:
+
+```text
+7152958049cce22e70380810cd7d5e8fd525577e73e50a958c45f8fc7f07ae00
+```
+
+The public release workflow downloads the published assets again, reopens both ZIP files, performs integrity tests, and verifies their hashes before recording the release as complete.
 
 ## Requirements
 
@@ -27,8 +43,8 @@ The application source and tests are in [`app/`](app/). The portable release arc
 
 ## Install
 
-1. Download the ZIP from [GitHub Releases](https://github.com/saroo98/codex-usage-monitor/releases).
-2. Verify the SHA-256 value in `SHA256SUMS.txt`.
+1. Download the ZIP from the links above or the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases/tag/v5.0.0).
+2. Verify the SHA-256 value.
 3. Extract the archive.
 4. Open `CodexUsageNotifier` and run `INSTALL.cmd`.
 
@@ -42,7 +58,7 @@ python -m compileall -q app tools
 python -m unittest discover -s app/tests -v
 ```
 
-The public CI workflow runs the test suite on Windows with the minimum supported Python version and the current stable Python line. It also verifies deterministic packaging.
+The public CI workflow runs the test suite on Windows with Python 3.10 and Python 3.14. It also verifies deterministic packaging.
 
 ## Privacy
 
