@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "tools/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - "tools/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Windows / Python ${{ matrix.python-version }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile Python source
+        run: python -m compileall -q app tools
+
+      - name: Run automated tests
+        env:
+          PYTHONPATH: app
+        run: python -m unittest discover -s app/tests -v
+
+      - name: Verify deterministic packaging
+        shell: pwsh
+        run: |
+          python tools/package.py
+          $first = (Get-FileHash dist/Usage-Monitor-for-Codex-5.0.0-Windows.zip -Algorithm SHA256).Hash
+          Remove-Item dist/Usage-Monitor-for-Codex-5.0.0-Windows.zip, dist/SHA256SUMS.txt -Force
+          python tools/package.py
+          $second = (Get-FileHash dist/Usage-Monitor-for-Codex-5.0.0-Windows.zip -Algorithm SHA256).Hash
+          if ($first -ne $second) { throw "Package output is not reproducible." }
