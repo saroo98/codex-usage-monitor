@@ -7,6 +7,12 @@ on:
     paths:
       - '.bootstrap/native/**'
       - '.github/workflows/native-bootstrap-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.bootstrap/native/**'
+      - '.github/workflows/native-bootstrap-ci.yml'
   workflow_dispatch:
 
 permissions:
