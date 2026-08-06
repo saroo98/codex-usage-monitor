@@ -142,7 +142,7 @@ def main() -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print(f"Website verification passed for {len(list(SITE.glob('*.html')))} pages and 3 experience checks.")
+    print(f"Website verification passed for {len(list(SITE.glob('*.html')))} pages and 5 experience checks.")
     return 0
 
 

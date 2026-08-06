@@ -10,6 +10,32 @@ const experienceSource = fs.readFileSync(
   path.join(__dirname, '..', 'docs', 'experience.js'),
   'utf8'
 );
+const stylesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'docs', 'styles.css'),
+  'utf8'
+);
+
+function cssVariable(name) {
+  const match = stylesSource.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'i'));
+  assert.ok(match, `expected --${name} to be a six-digit hex color`);
+  return match[1];
+}
+
+function relativeLuminance(hex) {
+  const value = hex.slice(1);
+  const channels = [0, 2, 4].map((index) => parseInt(value.slice(index, index + 2), 16) / 255);
+  const linear = channels.map((channel) => (
+    channel <= 0.04045
+      ? channel / 12.92
+      : Math.pow((channel + 0.055) / 1.055, 2.4)
+  ));
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function contrastRatio(foreground, background) {
+  const values = [relativeLuminance(foreground), relativeLuminance(background)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
 
 function createClassList() {
   const values = new Set();
@@ -153,4 +179,28 @@ test('pauses visual motion and allowance progress while the page is hidden', () 
   harness.runNextFrame(1825);
 
   assert.equal(harness.value.textContent, '92');
+});
+
+test('text tokens meet WCAG AA contrast on their light surfaces', () => {
+  const canvas = cssVariable('canvas');
+  const surface = cssVariable('surface');
+
+  for (const [name, foreground, background] of [
+    ['ink', cssVariable('ink'), canvas],
+    ['ink-soft', cssVariable('ink-soft'), canvas],
+    ['muted', cssVariable('muted'), surface],
+    ['accent-deep', cssVariable('accent-deep'), surface]
+  ]) {
+    assert.ok(
+      contrastRatio(foreground, background) >= 4.5,
+      `${name} must maintain at least 4.5:1 contrast`
+    );
+  }
+});
+
+test('the primary action maintains WCAG AA text contrast', () => {
+  assert.ok(
+    contrastRatio('#ffffff', cssVariable('accent')) >= 4.5,
+    'white button text must maintain at least 4.5:1 contrast'
+  );
 });
