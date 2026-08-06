@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#111827"/>
-  <path d="M18 33a14 14 0 1 1 27 5" fill="none" stroke="#dbeafe" stroke-width="7" stroke-linecap="round"/>
-  <path d="M45 38a14 14 0 0 1-15 8" fill="none" stroke="#60a5fa" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="32" cy="32" r="4" fill="#f8fafc"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="Codex Usage Monitor symbol" shape-rendering="geometricPrecision">
+  <title>Codex Usage Monitor symbol</title>
+  <rect width="1000" height="1000" fill="#F5F5F1"/>
+  <path d="M 718 294 A 300 300 0 1 0 718 706" fill="none" stroke="#090B0D" stroke-width="104" stroke-linecap="butt" stroke-linejoin="round"/>
+  <rect x="405" y="572" width="54" height="118" rx="4" fill="#147653"/>
+  <rect x="485" y="494" width="54" height="196" rx="4" fill="#1E9167"/>
+  <rect x="565" y="412" width="54" height="278" rx="4" fill="#2EAE7E"/>
+  <rect x="645" y="308" width="54" height="382" rx="4" fill="#63D7A6"/>
 </svg>
