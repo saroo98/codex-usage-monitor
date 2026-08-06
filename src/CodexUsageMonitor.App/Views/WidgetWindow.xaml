@@ -125,8 +125,8 @@
           </MenuItem.Style>
         </MenuItem>
         <Separator />
-        <MenuItem Header="Lock position" Command="{Binding ToggleLockCommand}" IsCheckable="True" IsChecked="{Binding IsLocked}" />
-        <MenuItem Header="Click-through" Command="{Binding ToggleClickThroughCommand}" IsCheckable="True" IsChecked="{Binding IsClickThrough}" ToolTip="Recover with Ctrl+Shift+U" />
+        <MenuItem Header="Lock position" Command="{Binding ToggleLockCommand}" IsCheckable="True" IsChecked="{Binding IsLocked, Mode=OneWay}" />
+        <MenuItem Header="Click-through" Command="{Binding ToggleClickThroughCommand}" IsCheckable="True" IsChecked="{Binding IsClickThrough, Mode=OneWay}" ToolTip="Recover with Ctrl+Shift+U" />
         <MenuItem Header="Redeem reset credit…" Command="{Binding RedeemResetCreditCommand}" IsEnabled="{Binding CanRedeemResetCredit}" />
         <Separator />
         <MenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />

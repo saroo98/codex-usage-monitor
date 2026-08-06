@@ -9,8 +9,6 @@ public sealed class WidgetDragController : IDisposable
     private readonly Func<bool> _isLocked;
     private readonly Func<bool> _snapEnabled;
     private readonly MonitorPlacementService _placements;
-    private System.Windows.Point? _pressPoint;
-    private bool _dragging;
     private bool _disposed;
 
     public WidgetDragController(
@@ -24,8 +22,6 @@ public sealed class WidgetDragController : IDisposable
         _snapEnabled = snapEnabled ?? throw new ArgumentNullException(nameof(snapEnabled));
         _placements = placements ?? throw new ArgumentNullException(nameof(placements));
         _window.PreviewMouseLeftButtonDown += OnMouseDown;
-        _window.PreviewMouseMove += OnMouseMove;
-        _window.PreviewMouseLeftButtonUp += OnMouseUp;
     }
 
     public event EventHandler? Clicked;
@@ -38,50 +34,18 @@ public sealed class WidgetDragController : IDisposable
             return;
         }
 
-        _pressPoint = eventArgs.GetPosition(_window);
-        _dragging = false;
-        _window.CaptureMouse();
-    }
-
-    private void OnMouseMove(object sender, System.Windows.Input.MouseEventArgs eventArgs)
-    {
-        if (_pressPoint is null || eventArgs.LeftButton != MouseButtonState.Pressed || _isLocked())
+        var originalLeft = _window.Left;
+        var originalTop = _window.Top;
+        try
+        {
+            _window.DragMove();
+        }
+        catch (InvalidOperationException)
         {
             return;
         }
 
-        var current = eventArgs.GetPosition(_window);
-        if (!_dragging && !EdgeSnapper.HasExceededDragThreshold(
-                _pressPoint.Value.X,
-                _pressPoint.Value.Y,
-                current.X,
-                current.Y))
-        {
-            return;
-        }
-
-        if (!_dragging)
-        {
-            _dragging = true;
-            try
-            {
-                _window.DragMove();
-            }
-            catch (InvalidOperationException)
-            {
-            }
-        }
-    }
-
-    private void OnMouseUp(object sender, MouseButtonEventArgs eventArgs)
-    {
-        if (_pressPoint is null)
-        {
-            return;
-        }
-
-        _window.ReleaseMouseCapture();
-        if (_dragging)
+        if (Math.Abs(_window.Left - originalLeft) >= 0.5 || Math.Abs(_window.Top - originalTop) >= 0.5)
         {
             var rect = new DipRect(_window.Left, _window.Top, _window.ActualWidth, _window.ActualHeight);
             var monitor = _placements.Resolve(null, rect);
@@ -94,9 +58,6 @@ public sealed class WidgetDragController : IDisposable
         {
             Clicked?.Invoke(this, EventArgs.Empty);
         }
-
-        _pressPoint = null;
-        _dragging = false;
     }
 
     public void Dispose()
@@ -108,7 +69,5 @@ public sealed class WidgetDragController : IDisposable
 
         _disposed = true;
         _window.PreviewMouseLeftButtonDown -= OnMouseDown;
-        _window.PreviewMouseMove -= OnMouseMove;
-        _window.PreviewMouseLeftButtonUp -= OnMouseUp;
     }
 }
