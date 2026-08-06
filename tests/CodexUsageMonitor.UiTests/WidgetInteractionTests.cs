@@ -1,7 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Markup;
+using System.Windows.Media;
 using System.Windows.Threading;
+using System.Reflection;
 using CodexUsageMonitor.App.Views;
 using CodexUsageMonitor.Core.Settings;
 using CodexUsageMonitor.Windows.Windowing;
@@ -12,6 +15,149 @@ namespace CodexUsageMonitor.UiTests;
 [TestClass]
 public sealed class WidgetInteractionTests
 {
+    [TestMethod]
+    [DataRow(WidgetSize.Medium, 208d, 60d)]
+    [DataRow(WidgetSize.Small, 148d, 42d)]
+    [DataRow(WidgetSize.ExtraSmall, 104d, 30d)]
+    public void WidgetSizeIgnoresCorruptedPersistedDimensions(WidgetSize size, double expectedWidth, double expectedHeight)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var window = WidgetWindow.CreateVisualEvidenceWindow(new CorruptedWidgetSizeModel(), size);
+
+                Assert.AreEqual(expectedWidth, window.Width, "The widget width must come from its selected presentation mode.");
+                Assert.AreEqual(expectedHeight, window.Height, "The widget height must come from its selected presentation mode.");
+                window.Close();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+        {
+            Assert.Fail($"Canonical widget sizing verification failed: {failure}");
+        }
+    }
+
+    [TestMethod]
+    public void SettingsComboBoxTextIsVerticallyCentered()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var repositoryRoot = FindRepositoryRoot();
+                var resources = LoadDictionary(Path.Combine(repositoryRoot, "src", "CodexUsageMonitor.App", "Themes", "Controls.xaml"));
+                var comboBox = new ComboBox
+                {
+                    Style = (Style)resources[typeof(ComboBox)],
+                };
+
+                Assert.AreEqual(
+                    VerticalAlignment.Center,
+                    comboBox.VerticalContentAlignment,
+                    "Selected values must be vertically centered in every settings dropdown.");
+
+                var item = new ComboBoxItem
+                {
+                    Style = (Style)resources[typeof(ComboBoxItem)],
+                };
+                Assert.AreEqual(
+                    VerticalAlignment.Center,
+                    item.VerticalContentAlignment,
+                    "Dropdown choices must use the same vertical alignment as the selected value.");
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+        {
+            Assert.Fail($"Settings dropdown alignment verification failed: {failure}");
+        }
+    }
+
+    [TestMethod]
+    public void PrimaryButtonTextRemainsReadableWhenHovered()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            Window? window = null;
+            try
+            {
+                var repositoryRoot = FindRepositoryRoot();
+                var resources = new ResourceDictionary();
+                resources.MergedDictionaries.Add(LoadDictionary(Path.Combine(repositoryRoot, "src", "CodexUsageMonitor.App", "Themes", "Light.xaml")));
+                resources.MergedDictionaries.Add(LoadDictionary(Path.Combine(repositoryRoot, "src", "CodexUsageMonitor.App", "Themes", "Controls.xaml")));
+
+                var button = new Button
+                {
+                    Content = "_Save",
+                    Style = (Style)resources["PrimaryButtonStyle"],
+                    Width = 100,
+                    Height = 40,
+                };
+                window = new Window
+                {
+                    Resources = resources,
+                    Content = button,
+                    Width = 260,
+                    Height = 150,
+                    Left = 520,
+                    Top = 320,
+                    Topmost = true,
+                    WindowStartupLocation = WindowStartupLocation.Manual,
+                };
+                window.Show();
+                window.Activate();
+                window.UpdateLayout();
+                button.ApplyTemplate();
+
+                SetIsMouseOver(button, true);
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
+
+                var chrome = (Border?)button.Template.FindName("Chrome", button)
+                    ?? throw new AssertFailedException("The button template chrome was not created.");
+                var foreground = ((SolidColorBrush)button.Foreground).Color;
+                var background = ((SolidColorBrush)chrome.Background).Color;
+                var contrast = ContrastRatio(foreground, background);
+
+                Assert.IsGreaterThanOrEqualTo(4.5, contrast, $"Hovered Save contrast was only {contrast:F2}:1.");
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                window?.Close();
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+        {
+            Assert.Fail($"Hovered primary button verification failed: {failure}");
+        }
+    }
+
     [TestMethod]
     public void DraggingUnlockedWidgetChangesWindowPosition()
     {
@@ -151,6 +297,12 @@ public sealed class WidgetInteractionTests
         public ICommand ExitCommand { get; } = new NoOpCommand();
     }
 
+    private sealed class CorruptedWidgetSizeModel
+    {
+        public double Width => 148;
+        public double Height => 1023;
+    }
+
     private sealed class NoOpCommand : ICommand
     {
         public event EventHandler? CanExecuteChanged
@@ -161,6 +313,48 @@ public sealed class WidgetInteractionTests
 
         public bool CanExecute(object? parameter) => true;
         public void Execute(object? parameter) { }
+    }
+
+    private static void SetIsMouseOver(UIElement element, bool value)
+    {
+        var field = typeof(UIElement).GetField("IsMouseOverPropertyKey", BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new AssertFailedException("WPF's IsMouseOver dependency-property key was not found.");
+        var key = (DependencyPropertyKey?)field.GetValue(null)
+            ?? throw new AssertFailedException("WPF's IsMouseOver dependency-property key was unavailable.");
+        element.SetValue(key, value);
+    }
+
+    private static ResourceDictionary LoadDictionary(string path) =>
+        (ResourceDictionary)XamlReader.Parse(File.ReadAllText(path));
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Directory.Build.props")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName
+            ?? throw new AssertFailedException("The repository root could not be located.");
+    }
+
+    private static double ContrastRatio(Color first, Color second)
+    {
+        static double Luminance(Color color)
+        {
+            static double Linearize(byte channel)
+            {
+                var value = channel / 255d;
+                return value <= 0.04045 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
+            }
+
+            return (0.2126 * Linearize(color.R)) + (0.7152 * Linearize(color.G)) + (0.0722 * Linearize(color.B));
+        }
+
+        var lighter = Math.Max(Luminance(first), Luminance(second));
+        var darker = Math.Min(Luminance(first), Luminance(second));
+        return (lighter + 0.05) / (darker + 0.05);
     }
 
     private static class NativeMouse
