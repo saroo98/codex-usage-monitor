@@ -116,12 +116,21 @@ def validate_page(path: Path) -> list[str]:
 
 
 def main() -> int:
-    required = {
-        "index.html", "privacy.html", "support.html", "code-signing.html", "404.html",
-        "styles.css", "experience.js", "favicon.svg", ".nojekyll",
+    allowed_files = {
+        Path("index.html"), Path("privacy.html"), Path("support.html"),
+        Path("code-signing.html"), Path("404.html"), Path("styles.css"),
+        Path("experience.js"), Path("favicon.svg"), Path(".nojekyll"),
     }
-    present = {path.name for path in SITE.iterdir() if path.is_file()} if SITE.is_dir() else set()
-    errors = [f"missing site file: {name}" for name in sorted(required - present)]
+    present_files = {
+        path.relative_to(SITE)
+        for path in SITE.rglob("*")
+        if path.is_file()
+    } if SITE.is_dir() else set()
+    errors = [f"missing site file: {path.as_posix()}" for path in sorted(allowed_files - present_files)]
+    errors.extend(
+        f"unexpected site file: {path.as_posix()}"
+        for path in sorted(present_files - allowed_files)
+    )
     for path in sorted(SITE.glob("*.html")):
         errors.extend(validate_page(path))
     try:

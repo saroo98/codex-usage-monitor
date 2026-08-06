@@ -5,9 +5,10 @@
   --surface: #ffffff;
   --surface-blue: #edf5ff;
   --surface-strong: #e3efff;
+  --footer-surface: #f5f8fc;
   --ink: #0d1830;
   --ink-soft: #40506a;
-  --muted: #66748c;
+  --muted: #627087;
   --line: rgba(37, 78, 137, 0.14);
   --line-strong: rgba(37, 78, 137, 0.24);
   --accent: #2e6bed;
@@ -893,7 +894,7 @@ h3 {
   display: grid;
   place-items: center;
   border-radius: 0.6rem;
-  color: var(--accent);
+  color: var(--accent-deep);
   background: var(--surface-blue);
   font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 0.6rem;
@@ -1243,7 +1244,7 @@ body > footer {
   padding: 3.4rem 0 1.4rem;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  background: #f5f8fc;
+  background: var(--footer-surface);
   font-size: 0.78rem;
 }
 

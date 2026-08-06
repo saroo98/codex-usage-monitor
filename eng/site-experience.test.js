@@ -189,7 +189,9 @@ test('text tokens meet WCAG AA contrast on their light surfaces', () => {
     ['ink', cssVariable('ink'), canvas],
     ['ink-soft', cssVariable('ink-soft'), canvas],
     ['muted', cssVariable('muted'), surface],
-    ['accent-deep', cssVariable('accent-deep'), surface]
+    ['accent-deep', cssVariable('accent-deep'), surface],
+    ['benefit-number', cssVariable('accent-deep'), cssVariable('surface-blue')],
+    ['footer-muted', cssVariable('muted'), cssVariable('footer-surface')]
   ]) {
     assert.ok(
       contrastRatio(foreground, background) >= 4.5,
