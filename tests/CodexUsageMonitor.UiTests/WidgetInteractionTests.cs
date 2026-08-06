@@ -4,12 +4,95 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using CodexUsageMonitor.App.Views;
 using CodexUsageMonitor.Core.Settings;
+using CodexUsageMonitor.Windows.Windowing;
+using System.Runtime.InteropServices;
 
 namespace CodexUsageMonitor.UiTests;
 
 [TestClass]
 public sealed class WidgetInteractionTests
 {
+    [TestMethod]
+    public void DraggingUnlockedWidgetChangesWindowPosition()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            Window? window = null;
+            try
+            {
+                window = new Window
+                {
+                    Width = 208,
+                    Height = 60,
+                    Left = 420,
+                    Top = 320,
+                    WindowStyle = WindowStyle.None,
+                    ResizeMode = ResizeMode.NoResize,
+                    ShowInTaskbar = false,
+                    Topmost = true,
+                };
+                using var controller = new WidgetDragController(
+                    window,
+                    static () => false,
+                    static () => false,
+                    new MonitorPlacementService());
+                window.Show();
+                window.Activate();
+                window.UpdateLayout();
+
+                var beforeLeft = window.Left;
+                var beforeTop = window.Top;
+                var origin = window.PointToScreen(new Point(window.ActualWidth / 2, window.ActualHeight / 2));
+                var frame = new DispatcherFrame();
+                _ = Task.Run(async () =>
+                {
+                    NativeMouse.SetCursorPos((int)origin.X, (int)origin.Y);
+                    await Task.Delay(100);
+                    NativeMouse.MouseEvent(NativeMouse.LeftDown, 0, 0, 0, UIntPtr.Zero);
+                    for (var step = 1; step <= 10; step++)
+                    {
+                        NativeMouse.SetCursorPos((int)origin.X + (step * 16), (int)origin.Y + (step * 8));
+                        await Task.Delay(35);
+                    }
+
+                    NativeMouse.MouseEvent(NativeMouse.LeftUp, 0, 0, 0, UIntPtr.Zero);
+                    await Task.Delay(150);
+                    _ = window.Dispatcher.BeginInvoke(() => frame.Continue = false);
+                });
+
+                var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+                timeout.Tick += (_, _) =>
+                {
+                    timeout.Stop();
+                    frame.Continue = false;
+                };
+                timeout.Start();
+                Dispatcher.PushFrame(frame);
+
+                Assert.IsTrue(
+                    Math.Abs(window.Left - beforeLeft) >= 80 || Math.Abs(window.Top - beforeTop) >= 40,
+                    $"The unlocked widget did not move. Before=({beforeLeft},{beforeTop}), after=({window.Left},{window.Top}).");
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                window?.Close();
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+        {
+            Assert.Fail($"Dragging the unlocked widget failed: {failure}");
+        }
+    }
+
     [TestMethod]
     public void OpeningContextMenuDoesNotWriteReadOnlyWidgetState()
     {
@@ -78,5 +161,18 @@ public sealed class WidgetInteractionTests
 
         public bool CanExecute(object? parameter) => true;
         public void Execute(object? parameter) { }
+    }
+
+    private static class NativeMouse
+    {
+        internal const uint LeftDown = 0x0002;
+        internal const uint LeftUp = 0x0004;
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool SetCursorPos(int x, int y);
+
+        [DllImport("user32.dll", EntryPoint = "mouse_event")]
+        internal static extern void MouseEvent(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
     }
 }
