@@ -82,11 +82,11 @@ public sealed class ProfileMonitorSession : IAsyncDisposable
         await _client.InitializeAsync(cancellationToken).ConfigureAwait(false);
         await RefreshFullAsync(cancellationToken).ConfigureAwait(false);
         using var periodic = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        var periodicReady = periodic.WaitForNextTickAsync(cancellationToken).AsTask();
         while (!cancellationToken.IsCancellationRequested)
         {
             var commandReady = _commands.Reader.WaitToReadAsync(cancellationToken).AsTask();
             var updateReady = _updates.Reader.WaitToReadAsync(cancellationToken).AsTask();
-            var periodicReady = periodic.WaitForNextTickAsync(cancellationToken).AsTask();
             var completed = await Task.WhenAny(commandReady, updateReady, periodicReady).ConfigureAwait(false);
             if (completed == commandReady && await commandReady.ConfigureAwait(false))
             {
@@ -106,6 +106,7 @@ public sealed class ProfileMonitorSession : IAsyncDisposable
             else if (completed == periodicReady && await periodicReady.ConfigureAwait(false))
             {
                 await RefreshFullAsync(cancellationToken).ConfigureAwait(false);
+                periodicReady = periodic.WaitForNextTickAsync(cancellationToken).AsTask();
             }
         }
     }
