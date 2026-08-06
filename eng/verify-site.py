@@ -25,9 +25,21 @@ class PageParser(HTMLParser):
         self.scripts: list[str] = []
         self.stylesheets: list[str] = []
         self.media_assets: list[str] = []
+        self.hourglass_controls = 0
+        self.allowance_values = 0
+        self.forbidden_hero_classes: set[str] = set()
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
+        classes = set((values.get("class") or "").split())
+        forbidden_classes = {
+            "hero-atmosphere", "orbit", "preview-note", "trust-row", "reset-card", "widget-card",
+        }
+        self.forbidden_hero_classes.update(classes & forbidden_classes)
+        if tag == "button" and "data-hourglass" in values:
+            self.hourglass_controls += 1
+        if "data-count" in values:
+            self.allowance_values += 1
         if values.get("id"):
             self.ids.add(values["id"] or "")
         if tag == "a" and values.get("href"):
@@ -89,6 +101,13 @@ def validate_page(path: Path) -> list[str]:
             errors.append(f"{relative} is missing required sections: {', '.join(sorted(missing_ids))}")
         if parser.scripts != ["experience.js"]:
             errors.append(f"{relative} must load only experience.js")
+        if parser.hourglass_controls != 1:
+            errors.append(f"{relative} must contain exactly one interactive hourglass button")
+        if parser.allowance_values != 1:
+            errors.append(f"{relative} must contain exactly one allowance value")
+        if parser.forbidden_hero_classes:
+            removed = ", ".join(sorted(parser.forbidden_hero_classes))
+            errors.append(f"{relative} still contains removed hero elements: {removed}")
     elif parser.scripts:
         errors.append(f"{relative} must not load scripts")
 

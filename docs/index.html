@@ -36,17 +36,6 @@
 
   <main id="content">
     <section class="hero" id="top" aria-labelledby="hero-title" data-motion-root>
-      <div class="hero-atmosphere" aria-hidden="true">
-        <span class="particle particle-1"></span>
-        <span class="particle particle-2"></span>
-        <span class="particle particle-3"></span>
-        <span class="particle particle-4"></span>
-        <span class="particle particle-5"></span>
-        <span class="particle particle-6"></span>
-        <span class="particle particle-7"></span>
-        <span class="particle particle-8"></span>
-      </div>
-
       <div class="shell hero-grid">
         <div class="hero-copy">
           <p class="eyebrow entrance entrance-1"><span></span>Open-source Windows utility · Version 6.0</p>
@@ -59,20 +48,11 @@
             </a>
             <a class="text-link" href="https://github.com/saroo98/codex-usage-monitor" target="_blank" rel="noreferrer">Inspect the source <span aria-hidden="true">↗</span></a>
           </div>
-          <p class="preview-note entrance entrance-4"><span>Illustrative preview</span> This website never connects to your Codex account.</p>
-
-          <div class="trust-row entrance entrance-5" aria-label="Project trust facts">
-            <div><strong>Verified</strong><span>Checksums and package tests</span></div>
-            <div><strong>Local-first</strong><span>No project telemetry</span></div>
-            <div><strong>Open</strong><span>MIT-licensed source</span></div>
-          </div>
         </div>
 
-        <div class="hero-visual entrance entrance-5" role="img" aria-label="Illustrative Codex Usage Monitor preview showing 100 percent remaining">
-          <div class="orbit orbit-one" aria-hidden="true"></div>
-          <div class="orbit orbit-two" aria-hidden="true"></div>
-
-          <svg class="hourglass" viewBox="0 0 320 460" aria-hidden="true">
+        <div class="hero-visual entrance entrance-5">
+          <button class="hourglass-control" type="button" data-hourglass aria-label="Replay the allowance animation from 38 to 100 percent">
+            <svg class="hourglass" viewBox="0 0 320 460" aria-hidden="true">
             <defs>
               <linearGradient id="frame" x1="0" x2="1">
                 <stop offset="0" stop-color="#d9e7fa"/>
@@ -116,10 +96,11 @@
               <rect x="68" y="88" width="184" height="12" rx="6" fill="#edf5ff"/>
               <rect x="60" y="362" width="200" height="12" rx="6" fill="#edf5ff"/>
             </g>
-          </svg>
+            </svg>
+          </button>
 
-          <article class="preview-card usage-card">
-            <div class="card-label"><span class="live-dot"></span>Remaining allowance <small>Demo</small></div>
+          <article class="allowance-card" aria-label="Illustrative remaining allowance">
+            <div class="card-label"><span class="live-dot"></span>Remaining allowance</div>
             <div class="usage-value-row">
               <div class="usage-value"><span data-count aria-hidden="true">100</span><small aria-hidden="true">%</small><span class="visually-hidden">100 percent</span></div>
               <svg class="usage-ring" viewBox="0 0 100 100" aria-hidden="true">
@@ -128,18 +109,6 @@
               </svg>
             </div>
             <p>Allowance restored</p>
-          </article>
-
-          <article class="preview-card reset-card">
-            <div class="card-label">Next reset</div>
-            <strong>5d 14h 31m</strong>
-            <span>Monday, 10:00</span>
-          </article>
-
-          <article class="preview-card widget-card">
-            <div class="widget-top"><span class="mini-mark"></span><strong>Usage Monitor</strong><small>Live</small></div>
-            <div class="widget-main"><strong>100%</strong><span>Reset complete</span></div>
-            <div class="mini-chart" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           </article>
         </div>
       </div>

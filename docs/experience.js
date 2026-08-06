@@ -5,11 +5,13 @@
   const value = document.querySelector('[data-count]');
   const progress = document.querySelector('[data-progress]');
   const motionRoot = document.querySelector('[data-motion-root]');
+  const hourglass = document.querySelector('[data-hourglass]');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const startValue = 38;
   const endValue = 100;
   const duration = 1650;
   let frame = 0;
+  let stepTimer = 0;
   let previousFrame = null;
   let elapsed = 0;
   let complete = false;
@@ -22,10 +24,54 @@
 
   const finish = () => {
     if (frame) window.cancelAnimationFrame(frame);
+    if (stepTimer) window.clearTimeout(stepTimer);
     frame = 0;
+    stepTimer = 0;
     complete = true;
     render(endValue);
     root.classList.add('is-visible', 'entrance-complete');
+  };
+
+  const restartSequence = (flip = false) => {
+    if (frame) window.cancelAnimationFrame(frame);
+    if (stepTimer) window.clearTimeout(stepTimer);
+    frame = 0;
+    stepTimer = 0;
+    complete = false;
+    previousFrame = null;
+    elapsed = 0;
+    render(startValue);
+    root.classList.remove('entrance-complete');
+    root.classList.add('is-visible');
+
+    if (hourglass) {
+      if (flip) hourglass.classList.toggle('is-flipped');
+      hourglass.classList.remove('is-replaying');
+      void hourglass.offsetWidth;
+      hourglass.classList.add('is-replaying');
+    }
+
+    if (reducedMotion.matches) stepTimer = window.setTimeout(finish, 250);
+    else syncVisibility();
+  };
+
+  const resetTilt = () => {
+    if (!hourglass) return;
+    hourglass.style.setProperty('--tilt-x', '0deg');
+    hourglass.style.setProperty('--tilt-y', '0deg');
+  };
+
+  const updateTilt = (event) => {
+    if (!hourglass || reducedMotion.matches) {
+      resetTilt();
+      return;
+    }
+
+    const bounds = hourglass.getBoundingClientRect();
+    const horizontal = Math.max(-1, Math.min(1, ((event.clientX - bounds.left) / bounds.width) * 2 - 1));
+    const vertical = Math.max(-1, Math.min(1, ((event.clientY - bounds.top) / bounds.height) * 2 - 1));
+    hourglass.style.setProperty('--tilt-x', `${Number((-vertical * 3).toFixed(2))}deg`);
+    hourglass.style.setProperty('--tilt-y', `${Number((horizontal * 3).toFixed(2))}deg`);
   };
 
   const tick = (timestamp) => {
@@ -60,8 +106,15 @@
 
   root.classList.add('is-enhanced');
   document.addEventListener('visibilitychange', syncVisibility);
+  if (hourglass) {
+    resetTilt();
+    hourglass.addEventListener('click', () => restartSequence(true));
+    hourglass.addEventListener('pointermove', updateTilt);
+    hourglass.addEventListener('pointerleave', resetTilt);
+  }
   reducedMotion.addEventListener('change', (event) => {
-    if (event.matches && value && progress) finish();
+    if (event.matches) resetTilt();
+    if (event.matches && value && progress) restartSequence();
   });
 
   if (!value || !progress) {
@@ -70,12 +123,5 @@
     return;
   }
 
-  if (reducedMotion.matches) {
-    finish();
-    syncVisibility();
-    return;
-  }
-
-  render(startValue);
-  syncVisibility();
+  restartSequence();
 })();

@@ -296,9 +296,9 @@
             <Border Style="{StaticResource SettingsCardStyle}" AutomationProperties.Name="Update status">
               <StackPanel>
                 <TextBlock Text="{Binding Updates.Status}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-                <TextBlock Margin="0,8,0,0"><Run Text="Current version: " /><Run Text="{Binding Updates.CurrentVersion}" FontWeight="SemiBold" /></TextBlock>
-                <TextBlock><Run Text="Available version: " /><Run Text="{Binding Updates.AvailableVersion, TargetNullValue=None}" FontWeight="SemiBold" /></TextBlock>
-                <TextBlock><Run Text="Last checked: " /><Run Text="{Binding Updates.LastChecked}" /></TextBlock>
+                <TextBlock Margin="0,8,0,0"><Run Text="Current version: " /><Run Text="{Binding Updates.CurrentVersion, Mode=OneWay}" FontWeight="SemiBold" /></TextBlock>
+                <TextBlock><Run Text="Available version: " /><Run Text="{Binding Updates.AvailableVersion, Mode=OneWay, TargetNullValue=None}" FontWeight="SemiBold" /></TextBlock>
+                <TextBlock><Run Text="Last checked: " /><Run Text="{Binding Updates.LastChecked, Mode=OneWay}" /></TextBlock>
                 <TextBlock Text="{Binding Updates.Progress}" Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,0" />
               </StackPanel>
             </Border>
