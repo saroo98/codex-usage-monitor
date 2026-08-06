@@ -9,6 +9,8 @@ public sealed record AppLaunchRequest(
     string? SafeErrorCode,
     int ExitCode)
 {
+    public bool ApplyLaunchMinimizedPreference { get; init; }
+
     public bool HasPortableUpdateCommand => Commands.Any(static command =>
         command.Name is ActivationCommandNames.UpdateHealth or ActivationCommandNames.UpdateRolledBack);
 
@@ -155,7 +157,10 @@ public static class AppCommandLine
                 : ActivationCommandNames.ShowWidget));
         }
 
-        return new AppLaunchRequest(true, background, commands.AsReadOnly(), null, 0);
+        return new AppLaunchRequest(true, background, commands.AsReadOnly(), null, 0)
+        {
+            ApplyLaunchMinimizedPreference = arguments.Count == 0,
+        };
     }
 
     private static bool TryReadValue(
