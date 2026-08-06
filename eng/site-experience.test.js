@@ -21,6 +21,17 @@ function cssVariable(name) {
   return match[1];
 }
 
+function cssColor(selector, property) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const block = stylesSource.match(new RegExp(`${escapedSelector}[^{}]*\\{([^}]*)\\}`, 's'));
+  assert.ok(block, `expected ${selector} to have a CSS rule`);
+  const declaration = block[1].match(
+    new RegExp(`${property}:\\s*(#[0-9a-f]{6}|var\\(--([a-z0-9-]+)\\))`, 'i')
+  );
+  assert.ok(declaration, `expected ${selector} to define ${property} with a solid color`);
+  return declaration[2] ? cssVariable(declaration[2]) : declaration[1];
+}
+
 function relativeLuminance(hex) {
   const value = hex.slice(1);
   const channels = [0, 2, 4].map((index) => parseInt(value.slice(index, index + 2), 16) / 255);
@@ -190,8 +201,10 @@ test('text tokens meet WCAG AA contrast on their light surfaces', () => {
     ['ink-soft', cssVariable('ink-soft'), canvas],
     ['muted', cssVariable('muted'), surface],
     ['accent-deep', cssVariable('accent-deep'), surface],
-    ['benefit-number', cssVariable('accent-deep'), cssVariable('surface-blue')],
-    ['footer-muted', cssVariable('muted'), cssVariable('footer-surface')]
+    ['benefit-number', cssColor('.benefit-number', 'color'), cssColor('.benefit-number', 'background')],
+    ['flow-code', cssColor('.flow-grid code', 'color'), cssColor('.flow-grid code', 'background')],
+    ['package-icon', cssColor('.package-icon', 'color'), cssColor('.package-icon', 'background')],
+    ['footer-muted', cssColor('body > footer', 'color'), cssColor('body > footer', 'background')]
   ]) {
     assert.ok(
       contrastRatio(foreground, background) >= 4.5,

@@ -6,9 +6,11 @@
   --surface-blue: #edf5ff;
   --surface-strong: #e3efff;
   --footer-surface: #f5f8fc;
+  --code-surface: #eff3f8;
   --ink: #0d1830;
   --ink-soft: #40506a;
   --muted: #627087;
+  --code-ink: #5f6e87;
   --line: rgba(37, 78, 137, 0.14);
   --line-strong: rgba(37, 78, 137, 0.24);
   --accent: #2e6bed;
@@ -1043,8 +1045,8 @@ h3 {
   overflow: hidden;
   padding: 0.65rem 0.75rem;
   border-radius: 0.45rem;
-  color: #61708a;
-  background: #eff3f8;
+  color: var(--code-ink);
+  background: var(--code-surface);
   font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 0.64rem;
   text-overflow: ellipsis;
@@ -1135,7 +1137,7 @@ h3 {
   display: grid;
   place-items: center;
   border-radius: 0.75rem;
-  color: var(--accent);
+  color: var(--accent-deep);
   background: var(--surface-blue);
   font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 0.7rem;
