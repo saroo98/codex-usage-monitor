@@ -50,21 +50,33 @@ public sealed class MonitorPlacementService
             ?? monitors.First(monitor => monitor.IsPrimary);
     }
 
-    public DipRect Restore(WidgetPlacement? placement, double widthDip, double heightDip, bool snap)
+    public DipRect Restore(
+        WidgetPlacement? placement,
+        double widthDip,
+        double heightDip,
+        bool snap,
+        bool allowTaskbarOverlap)
     {
         var desired = placement is null
             ? new DipRect(double.NaN, double.NaN, widthDip, heightDip)
             : new DipRect(placement.LeftDip, placement.TopDip, widthDip, heightDip);
         var primary = GetMonitors().FirstOrDefault(static monitor => monitor.IsPrimary)
             ?? new MonitorWorkArea("DISPLAY", new(0, 0, 1920, 1080), new(0, 0, 1920, 1040), 1, 1, true);
+        var primaryArea = SelectPlacementArea(primary, allowTaskbarOverlap);
         if (!double.IsFinite(desired.Left) || !double.IsFinite(desired.Top))
         {
-            desired = desired.WithPosition(primary.WorkAreaDip.Right - widthDip - EdgeSnapper.DefaultGapDip,
-                primary.WorkAreaDip.Bottom - heightDip - EdgeSnapper.DefaultGapDip);
+            desired = desired.WithPosition(primaryArea.Right - widthDip - EdgeSnapper.DefaultGapDip,
+                primaryArea.Bottom - heightDip - EdgeSnapper.DefaultGapDip);
         }
 
         var monitor = Resolve(placement, desired);
-        return EdgeSnapper.ClampAndSnap(desired, monitor.WorkAreaDip, snap);
+        return EdgeSnapper.ClampAndSnap(desired, SelectPlacementArea(monitor, allowTaskbarOverlap), snap);
+    }
+
+    public static DipRect SelectPlacementArea(MonitorWorkArea monitor, bool allowTaskbarOverlap)
+    {
+        ArgumentNullException.ThrowIfNull(monitor);
+        return allowTaskbarOverlap ? monitor.BoundsDip : monitor.WorkAreaDip;
     }
 
     public WidgetPlacement Capture(Window window)

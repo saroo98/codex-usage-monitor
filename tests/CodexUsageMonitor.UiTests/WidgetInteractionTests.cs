@@ -5,6 +5,7 @@ using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Reflection;
+using CodexUsageMonitor.App.ViewModels;
 using CodexUsageMonitor.App.Views;
 using CodexUsageMonitor.Core.Settings;
 using CodexUsageMonitor.Windows.Windowing;
@@ -15,6 +16,30 @@ namespace CodexUsageMonitor.UiTests;
 [TestClass]
 public sealed class WidgetInteractionTests
 {
+    [TestMethod]
+    public void WidgetSettingsPreserveTaskbarOverlapPreference()
+    {
+        var defaults = new WidgetSettings();
+        Assert.IsFalse(defaults.AllowTaskbarOverlap, "Taskbar overlap must remain opt-in for existing installations.");
+
+        var section = new WidgetSettingsSectionViewModel();
+        section.Load(defaults with { AllowTaskbarOverlap = true });
+
+        Assert.IsTrue(section.AllowTaskbarOverlap);
+        Assert.IsTrue(section.ApplyTo(defaults).AllowTaskbarOverlap);
+    }
+
+    [TestMethod]
+    public void PlacementAreaUsesFullMonitorOnlyWhenTaskbarOverlapIsAllowed()
+    {
+        var bounds = new DipRect(0, 0, 1920, 1080);
+        var workArea = new DipRect(0, 0, 1920, 1040);
+        var monitor = new MonitorWorkArea("DISPLAY", bounds, workArea, 1, 1, true);
+
+        Assert.AreEqual(workArea, MonitorPlacementService.SelectPlacementArea(monitor, allowTaskbarOverlap: false));
+        Assert.AreEqual(bounds, MonitorPlacementService.SelectPlacementArea(monitor, allowTaskbarOverlap: true));
+    }
+
     [TestMethod]
     [DataRow(WidgetSize.Medium, 208d, 60d)]
     [DataRow(WidgetSize.Small, 148d, 42d)]
@@ -180,6 +205,7 @@ public sealed class WidgetInteractionTests
                 };
                 using var controller = new WidgetDragController(
                     window,
+                    static () => false,
                     static () => false,
                     static () => false,
                     new MonitorPlacementService());

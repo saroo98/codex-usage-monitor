@@ -105,6 +105,8 @@ public sealed record WidgetSettings
 
     public bool SnapToEdges { get; init; } = true;
 
+    public bool AllowTaskbarOverlap { get; init; }
+
     public bool ReduceMotion { get; init; }
 
     [JsonConverter(typeof(JsonStringEnumConverter<ResetTimeDisplayMode>))]

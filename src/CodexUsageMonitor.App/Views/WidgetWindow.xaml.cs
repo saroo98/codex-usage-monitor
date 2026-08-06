@@ -44,6 +44,7 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
             this,
             () => _settings.Current.Widget.Locked,
             () => _settings.Current.Widget.SnapToEdges,
+            () => _settings.Current.Widget.AllowTaskbarOverlap,
             _placements);
         _dragController.PlacementChanged += OnPlacementChanged;
         Loaded += OnLoaded;
@@ -97,7 +98,12 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
 
         if (restorePlacement && _loaded)
         {
-            var restored = _placements.Restore(settings.Widget.Placement, _viewModel.Width, _viewModel.Height, settings.Widget.SnapToEdges);
+            var restored = _placements.Restore(
+                settings.Widget.Placement,
+                _viewModel.Width,
+                _viewModel.Height,
+                settings.Widget.SnapToEdges,
+                settings.Widget.AllowTaskbarOverlap);
             Left = restored.Left;
             Top = restored.Top;
         }
