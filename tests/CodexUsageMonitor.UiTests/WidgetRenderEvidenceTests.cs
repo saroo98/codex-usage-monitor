@@ -295,6 +295,8 @@ public sealed class WidgetRenderEvidenceTests
 
     private sealed class UpdateEvidenceModel
     {
-        public string CurrentVersion { get; set; } = "6.0.0";
+        public string CurrentVersion { get; } = "6.0.0";
+        public string AvailableVersion { get; } = "6.0.1";
+        public string LastChecked { get; } = "Today, 13:00";
     }
 }
