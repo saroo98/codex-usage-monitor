@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+name: Validate GitHub Pages source
 
 on:
   push:
@@ -11,16 +11,14 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-source-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Pages artifact
+  validate:
+    name: Validate public website
     runs-on: ubuntu-latest
     steps:
       - name: Check out public source
@@ -30,23 +28,3 @@ jobs:
         run: |
           python eng/audit-publication.py
           python eng/verify-site.py
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload static site
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: ./docs
-
-  deploy:
-    name: Deploy Pages artifact
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
