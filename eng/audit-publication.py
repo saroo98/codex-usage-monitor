@@ -12,7 +12,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MAX_TRACKED_BYTES = 5 * 1024 * 1024
 TEXT_EXTENSIONS = {
-    "", ".cmd", ".cs", ".csproj", ".css", ".html", ".json", ".md", ".props",
+    "", ".cmd", ".cs", ".csproj", ".css", ".html", ".js", ".json", ".md", ".props",
     ".appinstaller", ".manifest", ".ps1", ".py", ".slnx", ".svg", ".targets", ".txt",
     ".xaml", ".xml", ".yml", ".yaml",
 }

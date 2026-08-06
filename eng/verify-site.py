@@ -16,14 +16,19 @@ class PageParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.links: list[str] = []
+        self.ids: set[str] = set()
         self.h1_count = 0
         self.has_main = False
         self.has_description = False
         self.has_viewport = False
-        self.external_scripts: list[str] = []
+        self.scripts: list[str] = []
+        self.stylesheets: list[str] = []
+        self.media_assets: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
+        if values.get("id"):
+            self.ids.add(values["id"] or "")
         if tag == "a" and values.get("href"):
             self.links.append(values["href"] or "")
         elif tag == "h1":
@@ -35,7 +40,30 @@ class PageParser(HTMLParser):
         elif tag == "meta" and values.get("name") == "viewport" and values.get("content"):
             self.has_viewport = True
         elif tag == "script" and values.get("src"):
-            self.external_scripts.append(values["src"] or "")
+            self.scripts.append(values["src"] or "")
+        elif tag == "link" and values.get("href"):
+            relationships = (values.get("rel") or "").lower().split()
+            if "stylesheet" in relationships:
+                self.stylesheets.append(values["href"] or "")
+            elif "icon" in relationships:
+                self.media_assets.append(values["href"] or "")
+        elif tag in {"audio", "img", "source", "video"} and values.get("src"):
+            self.media_assets.append(values["src"] or "")
+
+
+def validate_local_asset(page: Path, source: str, kind: str) -> list[str]:
+    relative = page.relative_to(ROOT)
+    parsed = urlparse(source)
+    if parsed.scheme or parsed.netloc or source.startswith("//"):
+        return [f"{relative} loads a remote {kind}: {source}"]
+    target = (page.parent / parsed.path).resolve()
+    try:
+        target.relative_to(SITE.resolve())
+    except ValueError:
+        return [f"{relative} loads a {kind} outside the site: {source}"]
+    if not target.is_file():
+        return [f"{relative} has a missing {kind}: {source}"]
+    return []
 
 
 def validate_page(path: Path) -> list[str]:
@@ -51,8 +79,24 @@ def validate_page(path: Path) -> list[str]:
         errors.append(f"{relative} is missing a viewport declaration")
     if path.name != "404.html" and not parser.has_description:
         errors.append(f"{relative} is missing a meta description")
-    if parser.external_scripts:
-        errors.append(f"{relative} loads external scripts")
+    if parser.stylesheets != ["styles.css"]:
+        errors.append(f"{relative} must load only styles.css")
+    if path.name == "index.html":
+        required_home_ids = {"top", "benefits", "how-it-works", "download"}
+        missing_ids = required_home_ids - parser.ids
+        if missing_ids:
+            errors.append(f"{relative} is missing required sections: {', '.join(sorted(missing_ids))}")
+        if parser.scripts != ["experience.js"]:
+            errors.append(f"{relative} must load only experience.js")
+    elif parser.scripts:
+        errors.append(f"{relative} must not load scripts")
+
+    for source in parser.scripts:
+        errors.extend(validate_local_asset(path, source, "script"))
+    for source in parser.stylesheets:
+        errors.extend(validate_local_asset(path, source, "stylesheet"))
+    for source in parser.media_assets:
+        errors.extend(validate_local_asset(path, source, "media asset"))
 
     for link in parser.links:
         parsed = urlparse(link)
@@ -73,7 +117,7 @@ def validate_page(path: Path) -> list[str]:
 def main() -> int:
     required = {
         "index.html", "privacy.html", "support.html", "code-signing.html", "404.html",
-        "styles.css", "favicon.svg", ".nojekyll",
+        "styles.css", "experience.js", "favicon.svg", ".nojekyll",
     }
     present = {path.name for path in SITE.iterdir() if path.is_file()} if SITE.is_dir() else set()
     errors = [f"missing site file: {name}" for name in sorted(required - present)]
