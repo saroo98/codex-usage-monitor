@@ -28,6 +28,11 @@ jobs:
       - name: Check out public source
         uses: actions/checkout@v6
 
+      - name: Verify public website
+        run: |
+          python eng/audit-publication.py
+          python eng/verify-site.py
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
