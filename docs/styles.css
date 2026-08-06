@@ -383,6 +383,24 @@ h3 {
   pointer-events: none;
 }
 
+.is-enhanced .entrance {
+  opacity: 0;
+  filter: blur(0.3rem);
+  transform: translateY(1.1rem);
+}
+
+.is-enhanced.is-visible .entrance {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition: opacity 650ms var(--ease-out), filter 650ms var(--ease-out), transform 650ms var(--ease-out);
+}
+
+.is-enhanced.is-visible .entrance-2 { transition-delay: 70ms; }
+.is-enhanced.is-visible .entrance-3 { transition-delay: 140ms; }
+.is-enhanced.is-visible .entrance-4 { transition-delay: 210ms; }
+.is-enhanced.is-visible .entrance-5 { transition-delay: 280ms; }
+
 .particle {
   position: absolute;
   width: 0.3rem;

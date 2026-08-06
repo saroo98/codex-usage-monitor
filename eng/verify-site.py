@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from pathlib import Path
+import subprocess
 import sys
 from urllib.parse import urlparse
 
@@ -123,12 +124,25 @@ def main() -> int:
     errors = [f"missing site file: {name}" for name in sorted(required - present)]
     for path in sorted(SITE.glob("*.html")):
         errors.extend(validate_page(path))
+    try:
+        experience_tests = subprocess.run(
+            ["node", "--test", ROOT / "eng" / "site-experience.test.js"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        errors.append("Node.js is required to verify the website experience")
+    else:
+        if experience_tests.returncode != 0:
+            output = (experience_tests.stdout + experience_tests.stderr).strip()
+            errors.append(f"website experience tests failed:\n{output}")
     if errors:
         print("Website verification failed:", file=sys.stderr)
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print(f"Website verification passed for {len(list(SITE.glob('*.html')))} pages.")
+    print(f"Website verification passed for {len(list(SITE.glob('*.html')))} pages and 3 experience checks.")
     return 0
 
 
