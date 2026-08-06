@@ -5,7 +5,8 @@
   "sizes": {
     "Medium": [208, 60],
     "Small": [148, 42],
-    "ExtraSmall": [104, 30]
+    "ExtraSmall": [104, 30],
+    "XXS": [48, 48]
   },
   "states": [
     "starting",
@@ -22,6 +23,6 @@
     "recovery",
     "migration"
   ],
-  "expectedScreenshotCount": 468,
+  "expectedScreenshotCount": 624,
   "privacy": "Synthetic labels only. Account identifiers, workspace labels, paths, and credentials are prohibited."
 }

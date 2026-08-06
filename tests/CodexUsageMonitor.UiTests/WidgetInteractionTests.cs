@@ -44,6 +44,7 @@ public sealed class WidgetInteractionTests
     [DataRow(WidgetSize.Medium, 208d, 60d)]
     [DataRow(WidgetSize.Small, 148d, 42d)]
     [DataRow(WidgetSize.ExtraSmall, 104d, 30d)]
+    [DataRow(WidgetSize.XXS, 48d, 48d)]
     public void WidgetSizeIgnoresCorruptedPersistedDimensions(WidgetSize size, double expectedWidth, double expectedHeight)
     {
         Exception? failure = null;
@@ -291,6 +292,9 @@ public sealed class WidgetInteractionTests
                 Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
 
                 Assert.IsTrue(menu.IsOpen);
+                Assert.IsTrue(
+                    menu.Items.OfType<MenuItem>().Any(static item => Equals(item.Header, "XXS (Square)")),
+                    "The widget context menu must expose the square XXS size.");
                 menu.IsOpen = false;
                 window.Close();
             }

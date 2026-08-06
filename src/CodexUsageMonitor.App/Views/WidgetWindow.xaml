@@ -6,7 +6,7 @@
         Title="Codex Usage Monitor"
         Width="{Binding Width}"
         Height="{Binding Height}"
-        MinWidth="104"
+        MinWidth="48"
         MinHeight="30"
         WindowStyle="None"
         ResizeMode="NoResize"
@@ -124,6 +124,14 @@
             </Style>
           </MenuItem.Style>
         </MenuItem>
+        <MenuItem Header="XXS (Square)" Command="{Binding SetSizeCommand}" CommandParameter="{x:Static settings:WidgetSize.XXS}" IsCheckable="True">
+          <MenuItem.Style>
+            <Style TargetType="MenuItem">
+              <Setter Property="IsChecked" Value="False" />
+              <Style.Triggers><DataTrigger Binding="{Binding Size}" Value="{x:Static settings:WidgetSize.XXS}"><Setter Property="IsChecked" Value="True" /></DataTrigger></Style.Triggers>
+            </Style>
+          </MenuItem.Style>
+        </MenuItem>
         <Separator />
         <MenuItem Header="Lock position" Command="{Binding ToggleLockCommand}" IsCheckable="True" IsChecked="{Binding IsLocked, Mode=OneWay}" />
         <MenuItem Header="Click-through" Command="{Binding ToggleClickThroughCommand}" IsCheckable="True" IsChecked="{Binding IsClickThrough, Mode=OneWay}" ToolTip="Recover with Ctrl+Shift+U" />
@@ -186,6 +194,21 @@
         <Ellipse Style="{StaticResource StateDotStyle}" Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,6,0" />
         <ProgressBar Grid.Column="1" Style="{StaticResource UsageProgressStyle}" Value="{Binding RemainingPercent, Mode=OneWay}" VerticalAlignment="Center" AutomationProperties.Name="Remaining usage percentage" />
         <TextBlock Grid.Column="2" Text="{Binding RemainingText}" FontSize="14" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center" />
+      </Grid>
+
+      <Grid x:Name="XXSLayout" Margin="5" Visibility="Collapsed">
+        <Ellipse Style="{StaticResource StateDotStyle}"
+                 Width="6"
+                 Height="6"
+                 HorizontalAlignment="Right"
+                 VerticalAlignment="Top" />
+        <TextBlock Text="{Binding RemainingText}"
+                   FontSize="14"
+                   FontWeight="SemiBold"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   TextAlignment="Center"
+                   AutomationProperties.Name="Remaining usage value" />
       </Grid>
     </Grid>
   </Border>

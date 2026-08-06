@@ -133,7 +133,13 @@ public sealed class TrayIconManager : IDisposable
         _sizeMenu.DropDownItems.Clear();
         foreach (var size in Enum.GetValues<WidgetSize>())
         {
-            var item = new ToolStripMenuItem(size is WidgetSize.ExtraSmall ? "Extra Small" : size.ToString())
+            var label = size switch
+            {
+                WidgetSize.ExtraSmall => "Extra Small",
+                WidgetSize.XXS => "XXS (Square)",
+                _ => size.ToString(),
+            };
+            var item = new ToolStripMenuItem(label)
             {
                 Checked = _settings.Current.Widget.Size == size,
                 Tag = size,

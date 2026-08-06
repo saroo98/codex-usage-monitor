@@ -250,7 +250,9 @@ public sealed class WidgetViewModel : ObservableObject, IDisposable
         {
             WidgetSize.Medium => (208d, 60d),
             WidgetSize.Small => (148d, 42d),
-            _ => (104d, 30d),
+            WidgetSize.ExtraSmall => (104d, 30d),
+            WidgetSize.XXS => (48d, 48d),
+            _ => (208d, 60d),
         };
         IsLocked = settings.Widget.Locked;
         IsClickThrough = settings.Widget.ClickThrough;

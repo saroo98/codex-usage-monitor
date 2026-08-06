@@ -9,6 +9,7 @@ public enum WidgetSize
     Medium,
     Small,
     ExtraSmall,
+    XXS,
 }
 
 public enum AppTheme
