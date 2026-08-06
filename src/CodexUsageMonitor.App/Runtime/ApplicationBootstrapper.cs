@@ -245,7 +245,7 @@ public sealed class ApplicationBootstrapper : IAsyncDisposable
 
     private static AppLaunchRequest NormalizeLaunch(AppLaunchRequest launch, AppSettings settings)
     {
-        if (launch.Background || !settings.General.LaunchMinimized ||
+        if (!launch.ApplyLaunchMinimizedPreference || launch.Background || !settings.General.LaunchMinimized ||
             launch.Commands.Count != 1 || launch.Commands[0].Name != ActivationCommandNames.ShowWidget)
         {
             return launch;
