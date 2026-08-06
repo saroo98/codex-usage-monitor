@@ -29,10 +29,18 @@ def error(message: str) -> None:
 
 
 def repository_paths(pattern: str = "*") -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    paths = [ROOT / item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
     return [
         path
-        for path in ROOT.rglob(pattern)
-        if not EXCLUDED_DIRECTORIES.intersection(part.lower() for part in path.relative_to(ROOT).parts)
+        for path in paths
+        if path.match(pattern)
+        and not EXCLUDED_DIRECTORIES.intersection(part.lower() for part in path.relative_to(ROOT).parts)
     ]
 
 
