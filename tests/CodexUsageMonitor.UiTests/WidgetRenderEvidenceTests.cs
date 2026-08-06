@@ -213,6 +213,7 @@ public sealed class WidgetRenderEvidenceTests
         yield return (WidgetSize.Medium, 208, 60);
         yield return (WidgetSize.Small, 148, 42);
         yield return (WidgetSize.ExtraSmall, 104, 30);
+        yield return (WidgetSize.XXS, 48, 48);
     }
 
     private static IEnumerable<WidgetScenario> Scenarios()

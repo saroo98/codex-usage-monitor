@@ -26,6 +26,7 @@ public sealed class TrayIconManager : IDisposable
     private readonly ToolStripMenuItem _lockItem;
     private readonly ToolStripMenuItem _clickThroughItem;
     private readonly ToolStripMenuItem _startupItem;
+    private readonly Icon _applicationIcon;
     private Icon? _stateIcon;
     private bool _widgetVisible = true;
     private bool _disposed;
@@ -61,6 +62,7 @@ public sealed class TrayIconManager : IDisposable
         _notifyIcon.MouseClick += OnNotifyIconMouseClick;
         _widget.PropertyChanged += OnWidgetPropertyChanged;
         _settings.Changed += OnSettingsChanged;
+        _applicationIcon = LoadApplicationIcon();
         UpdateIcon();
     }
 
@@ -131,7 +133,13 @@ public sealed class TrayIconManager : IDisposable
         _sizeMenu.DropDownItems.Clear();
         foreach (var size in Enum.GetValues<WidgetSize>())
         {
-            var item = new ToolStripMenuItem(size is WidgetSize.ExtraSmall ? "Extra Small" : size.ToString())
+            var label = size switch
+            {
+                WidgetSize.ExtraSmall => "Extra Small",
+                WidgetSize.XXS => "XXS (Square)",
+                _ => size.ToString(),
+            };
+            var item = new ToolStripMenuItem(label)
             {
                 Checked = _settings.Current.Widget.Size == size,
                 Tag = size,
@@ -218,39 +226,24 @@ public sealed class TrayIconManager : IDisposable
     private void UpdateIcon()
     {
         _stateIcon?.Dispose();
-        _stateIcon = CreateStateIcon(_widget.VisualState);
+        _stateIcon = TrayIconRenderer.Create(_applicationIcon, _widget.VisualState);
         _notifyIcon.Icon = _stateIcon;
         var text = $"Codex: {_widget.RemainingText} {_widget.LimitLabel}";
         _notifyIcon.Text = text[..Math.Min(text.Length, 63)];
     }
 
-    private static Icon CreateStateIcon(WidgetVisualState state)
+    private static Icon LoadApplicationIcon()
     {
-        using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
-        using var graphics = Graphics.FromImage(bitmap);
-        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        graphics.Clear(Color.Transparent);
-        var fill = state switch
+        if (Environment.ProcessPath is { } executablePath)
         {
-            WidgetVisualState.Healthy => Color.FromArgb(98, 214, 167),
-            WidgetVisualState.Warning => Color.FromArgb(255, 200, 87),
-            WidgetVisualState.Critical or WidgetVisualState.Depleted or WidgetVisualState.Error => Color.FromArgb(255, 107, 120),
-            _ => Color.FromArgb(129, 137, 152),
-        };
-        using var ring = new SolidBrush(Color.FromArgb(238, 27, 29, 36));
-        using var dot = new SolidBrush(fill);
-        graphics.FillEllipse(ring, 2, 2, 28, 28);
-        graphics.FillEllipse(dot, 8, 8, 16, 16);
-        var handle = bitmap.GetHicon();
-        try
-        {
-            using var temporary = Icon.FromHandle(handle);
-            return (Icon)temporary.Clone();
+            using var extracted = Icon.ExtractAssociatedIcon(executablePath);
+            if (extracted is not null)
+            {
+                return (Icon)extracted.Clone();
+            }
         }
-        finally
-        {
-            NativeMethods.DestroyIcon(handle);
-        }
+
+        return (Icon)SystemIcons.Application.Clone();
     }
 
     public void Dispose()
@@ -264,12 +257,6 @@ public sealed class TrayIconManager : IDisposable
         _notifyIcon.Dispose();
         _menu.Dispose();
         _stateIcon?.Dispose();
-    }
-
-    private static class NativeMethods
-    {
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-        internal static extern bool DestroyIcon(nint handle);
+        _applicationIcon.Dispose();
     }
 }

@@ -36,7 +36,7 @@ env:
 jobs:
   stage:
     name: Build signed production artifact set
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 120
     environment: native-production-release
 

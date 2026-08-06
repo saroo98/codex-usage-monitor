@@ -21,7 +21,7 @@ env:
 jobs:
   validate:
     name: Debug x64 validation
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 45
 
     steps:

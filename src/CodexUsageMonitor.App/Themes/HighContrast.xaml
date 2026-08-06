@@ -14,6 +14,9 @@
   <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
   <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
   <SolidColorBrush x:Key="DangerBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
+  <SolidColorBrush x:Key="SuccessTextBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
+  <SolidColorBrush x:Key="WarningTextBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
+  <SolidColorBrush x:Key="DangerTextBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
   <SolidColorBrush x:Key="TrackBrush" Color="{DynamicResource {x:Static SystemColors.ControlDarkColorKey}}" />
   <SolidColorBrush x:Key="ShadowBrush" Color="Transparent" />
 </ResourceDictionary>

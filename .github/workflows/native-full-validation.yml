@@ -21,7 +21,7 @@ env:
 jobs:
   validate:
     name: Release x64 and Arm64 validation
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 90
 
     steps:

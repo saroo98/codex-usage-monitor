@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using CodexUsageMonitor.App.Runtime;
 using CodexUsageMonitor.App.Services;
 using CodexUsageMonitor.App.ViewModels;
 using CodexUsageMonitor.Core.Settings;
@@ -9,7 +10,7 @@ using CodexUsageMonitor.Windows.Windowing;
 
 namespace CodexUsageMonitor.App.Views;
 
-public partial class WidgetWindow : Window, IDisposable
+public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
 {
     private readonly WidgetViewModel _viewModel = null!;
     private readonly ApplicationSettingsService _settings = null!;
@@ -43,6 +44,7 @@ public partial class WidgetWindow : Window, IDisposable
             this,
             () => _settings.Current.Widget.Locked,
             () => _settings.Current.Widget.SnapToEdges,
+            () => _settings.Current.Widget.AllowTaskbarOverlap,
             _placements);
         _dragController.PlacementChanged += OnPlacementChanged;
         Loaded += OnLoaded;
@@ -65,6 +67,7 @@ public partial class WidgetWindow : Window, IDisposable
     }
 
     internal FrameworkElement VisualEvidenceSurface => WidgetChrome;
+    Window IWidgetWindow.OwnerWindow => this;
 
     public void ShowWithoutActivation()
     {
@@ -95,7 +98,12 @@ public partial class WidgetWindow : Window, IDisposable
 
         if (restorePlacement && _loaded)
         {
-            var restored = _placements.Restore(settings.Widget.Placement, _viewModel.Width, _viewModel.Height, settings.Widget.SnapToEdges);
+            var restored = _placements.Restore(
+                settings.Widget.Placement,
+                _viewModel.Width,
+                _viewModel.Height,
+                settings.Widget.SnapToEdges,
+                settings.Widget.AllowTaskbarOverlap);
             Left = restored.Left;
             Top = restored.Top;
         }
@@ -103,14 +111,25 @@ public partial class WidgetWindow : Window, IDisposable
 
     private void ApplyVisualSize(WidgetSize size)
     {
+        (Width, Height) = size switch
+        {
+            WidgetSize.Medium => (208d, 60d),
+            WidgetSize.Small => (148d, 42d),
+            WidgetSize.ExtraSmall => (104d, 30d),
+            WidgetSize.XXS => (48d, 48d),
+            _ => (208d, 60d),
+        };
         MediumLayout.Visibility = size is WidgetSize.Medium ? Visibility.Visible : Visibility.Collapsed;
         SmallLayout.Visibility = size is WidgetSize.Small ? Visibility.Visible : Visibility.Collapsed;
         ExtraSmallLayout.Visibility = size is WidgetSize.ExtraSmall ? Visibility.Visible : Visibility.Collapsed;
+        XXSLayout.Visibility = size is WidgetSize.XXS ? Visibility.Visible : Visibility.Collapsed;
         WidgetChrome.CornerRadius = size switch
         {
             WidgetSize.Medium => new CornerRadius(14),
             WidgetSize.Small => new CornerRadius(11),
-            _ => new CornerRadius(9),
+            WidgetSize.ExtraSmall => new CornerRadius(9),
+            WidgetSize.XXS => new CornerRadius(12),
+            _ => new CornerRadius(14),
         };
     }
 

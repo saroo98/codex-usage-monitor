@@ -70,6 +70,7 @@ public sealed class WidgetSettingsSectionViewModel : ObservableObject
     private bool _locked;
     private bool _clickThrough;
     private bool _snapToEdges;
+    private bool _allowTaskbarOverlap;
     private bool _reduceMotion;
     private bool _showResetTime;
     private bool _showAccountLabel;
@@ -83,6 +84,7 @@ public sealed class WidgetSettingsSectionViewModel : ObservableObject
     public bool Locked { get => _locked; set => SetProperty(ref _locked, value); }
     public bool ClickThrough { get => _clickThrough; set => SetProperty(ref _clickThrough, value); }
     public bool SnapToEdges { get => _snapToEdges; set => SetProperty(ref _snapToEdges, value); }
+    public bool AllowTaskbarOverlap { get => _allowTaskbarOverlap; set => SetProperty(ref _allowTaskbarOverlap, value); }
     public bool ReduceMotion { get => _reduceMotion; set => SetProperty(ref _reduceMotion, value); }
     public bool ShowResetTime { get => _showResetTime; set => SetProperty(ref _showResetTime, value); }
     public bool ShowAccountLabel { get => _showAccountLabel; set => SetProperty(ref _showAccountLabel, value); }
@@ -96,6 +98,7 @@ public sealed class WidgetSettingsSectionViewModel : ObservableObject
         Locked = settings.Locked;
         ClickThrough = settings.ClickThrough;
         SnapToEdges = settings.SnapToEdges;
+        AllowTaskbarOverlap = settings.AllowTaskbarOverlap;
         ReduceMotion = settings.ReduceMotion;
         ShowResetTime = settings.ResetTimeDisplay is not ResetTimeDisplayMode.Hidden;
         ShowAccountLabel = settings.ShowAccountLabel;
@@ -110,6 +113,7 @@ public sealed class WidgetSettingsSectionViewModel : ObservableObject
         Locked = Locked,
         ClickThrough = ClickThrough,
         SnapToEdges = SnapToEdges,
+        AllowTaskbarOverlap = AllowTaskbarOverlap,
         ReduceMotion = ReduceMotion,
         ResetTimeDisplay = ShowResetTime ? ResetTimeDisplayMode.Countdown : ResetTimeDisplayMode.Hidden,
         ShowAccountLabel = ShowAccountLabel,

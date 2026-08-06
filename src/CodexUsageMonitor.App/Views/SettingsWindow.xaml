@@ -135,6 +135,7 @@
               <CheckBox Content="Always on top" IsChecked="{Binding Widget.Topmost}" />
               <CheckBox Content="Lock position" IsChecked="{Binding Widget.Locked}" />
               <CheckBox Content="Snap to screen edges" IsChecked="{Binding Widget.SnapToEdges}" />
+              <CheckBox Content="Allow widget over the taskbar" IsChecked="{Binding Widget.AllowTaskbarOverlap}" ToolTip="Lets the floating widget overlap the Windows taskbar." />
               <CheckBox Content="Reduce motion" IsChecked="{Binding Widget.ReduceMotion}" />
               <CheckBox Content="Show reset time" IsChecked="{Binding Widget.ShowResetTime}" />
               <CheckBox Content="Show account label" IsChecked="{Binding Widget.ShowAccountLabel}" />

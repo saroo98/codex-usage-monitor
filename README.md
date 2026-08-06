@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.svg" width="112" alt="Codex Usage Monitor logo">
+</p>
+
 # Codex Usage Monitor
 
 A lightweight native Windows widget for monitoring Codex usage limits and reset times through the locally installed Codex App Server.

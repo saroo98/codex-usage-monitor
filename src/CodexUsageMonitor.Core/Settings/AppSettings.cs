@@ -9,6 +9,7 @@ public enum WidgetSize
     Medium,
     Small,
     ExtraSmall,
+    XXS,
 }
 
 public enum AppTheme
@@ -104,6 +105,8 @@ public sealed record WidgetSettings
     public bool ClickThrough { get; init; }
 
     public bool SnapToEdges { get; init; } = true;
+
+    public bool AllowTaskbarOverlap { get; init; }
 
     public bool ReduceMotion { get; init; }
 

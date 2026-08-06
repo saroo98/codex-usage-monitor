@@ -256,6 +256,8 @@ public static class AppHostBuilder
         services.AddSingleton<Func<OnboardingWindow>>(provider => () => provider.GetRequiredService<OnboardingWindow>());
         services.AddSingleton<Func<ResetRedemptionIntent, ResetCreditConfirmationDialog>>(_ =>
             intent => new ResetCreditConfirmationDialog(intent));
+        services.AddSingleton<Func<IWidgetWindow>>(provider => () => provider.GetRequiredService<WidgetWindow>());
+        services.AddSingleton<WidgetWindowSession>();
         services.AddSingleton<WindowCoordinator>();
         services.AddSingleton<Func<WindowCoordinator>>(provider => () => provider.GetRequiredService<WindowCoordinator>());
         services.AddSingleton<ApplicationCommandRouter>();
@@ -266,7 +268,7 @@ public static class AppHostBuilder
         services.AddSingleton<RuntimeActionService>();
         services.AddSingleton<WidgetActions>(provider => provider.GetRequiredService<UiActionDispatcher>().CreateWidgetActions());
         services.AddSingleton<WidgetViewModel>();
-        services.AddSingleton<WidgetWindow>();
+        services.AddTransient<WidgetWindow>();
         services.AddTransient<SettingsActions>(provider => provider.GetRequiredService<RuntimeActionService>().CreateSettingsActions());
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<SettingsWindow>();
