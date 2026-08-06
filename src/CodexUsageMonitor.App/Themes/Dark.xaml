@@ -29,6 +29,9 @@
   <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource SuccessColor}" />
   <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}" />
   <SolidColorBrush x:Key="DangerBrush" Color="{DynamicResource DangerColor}" />
+  <SolidColorBrush x:Key="SuccessTextBrush" Color="{DynamicResource SuccessColor}" />
+  <SolidColorBrush x:Key="WarningTextBrush" Color="{DynamicResource WarningColor}" />
+  <SolidColorBrush x:Key="DangerTextBrush" Color="{DynamicResource DangerColor}" />
   <SolidColorBrush x:Key="TrackBrush" Color="{DynamicResource TrackColor}" />
   <SolidColorBrush x:Key="ShadowBrush" Color="{DynamicResource ShadowColor}" />
 </ResourceDictionary>

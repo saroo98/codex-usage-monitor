@@ -13,6 +13,9 @@
   <Color x:Key="SuccessColor">#FF1E9167</Color>
   <Color x:Key="WarningColor">#FF9A6500</Color>
   <Color x:Key="DangerColor">#FFC9364B</Color>
+  <Color x:Key="SuccessTextColor">#FF147653</Color>
+  <Color x:Key="WarningTextColor">#FF8A5700</Color>
+  <Color x:Key="DangerTextColor">#FFB5223A</Color>
   <Color x:Key="TrackColor">#18000000</Color>
   <Color x:Key="ShadowColor">#30000000</Color>
   <SolidColorBrush x:Key="SurfaceBrush" Color="{DynamicResource SurfaceColor}" />
@@ -29,6 +32,9 @@
   <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource SuccessColor}" />
   <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}" />
   <SolidColorBrush x:Key="DangerBrush" Color="{DynamicResource DangerColor}" />
+  <SolidColorBrush x:Key="SuccessTextBrush" Color="{DynamicResource SuccessTextColor}" />
+  <SolidColorBrush x:Key="WarningTextBrush" Color="{DynamicResource WarningTextColor}" />
+  <SolidColorBrush x:Key="DangerTextBrush" Color="{DynamicResource DangerTextColor}" />
   <SolidColorBrush x:Key="TrackBrush" Color="{DynamicResource TrackColor}" />
   <SolidColorBrush x:Key="ShadowBrush" Color="{DynamicResource ShadowColor}" />
 </ResourceDictionary>

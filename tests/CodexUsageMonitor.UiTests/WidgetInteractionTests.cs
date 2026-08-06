@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Markup;
@@ -16,6 +17,79 @@ namespace CodexUsageMonitor.UiTests;
 [TestClass]
 public sealed class WidgetInteractionTests
 {
+    [TestMethod]
+    public void RemainingValueUsesSemanticStateColorAtEverySizeAndTheme()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var repositoryRoot = FindRepositoryRoot();
+                var expectations = new (WidgetVisualState State, string ResourceKey)[]
+                {
+                    (WidgetVisualState.Healthy, "SuccessTextBrush"),
+                    (WidgetVisualState.Warning, "WarningTextBrush"),
+                    (WidgetVisualState.Critical, "DangerTextBrush"),
+                    (WidgetVisualState.Depleted, "DangerTextBrush"),
+                    (WidgetVisualState.Stale, "TextMutedBrush"),
+                    (WidgetVisualState.Error, "DangerTextBrush"),
+                    (WidgetVisualState.Starting, "TextMutedBrush"),
+                };
+
+                foreach (var theme in new[] { "Light", "Dark", "HighContrast" })
+                {
+                    foreach (var size in Enum.GetValues<WidgetSize>())
+                    {
+                        foreach (var (state, resourceKey) in expectations)
+                        {
+                            var window = WidgetWindow.CreateVisualEvidenceWindow(new SemanticColorModel(state), size);
+                            window.Resources.MergedDictionaries.Insert(
+                                0,
+                                LoadDictionary(Path.Combine(repositoryRoot, "src", "CodexUsageMonitor.App", "Themes", $"{theme}.xaml")));
+                            window.VisualEvidenceSurface.Measure(new Size(window.Width, window.Height));
+                            window.VisualEvidenceSurface.Arrange(new Rect(0, 0, window.Width, window.Height));
+                            window.VisualEvidenceSurface.UpdateLayout();
+
+                            var value = FindVisualChildren<TextBlock>(window.VisualEvidenceSurface)
+                                .SingleOrDefault(text =>
+                                    text.ActualWidth > 0 &&
+                                    text.ActualHeight > 0 &&
+                                    AutomationProperties.GetName(text) == "Remaining usage value")
+                                ?? throw new AssertFailedException($"The visible remaining value was not accessible for {size}.");
+                            var expected = ((SolidColorBrush)window.FindResource(resourceKey)).Color;
+                            var actual = ((SolidColorBrush)value.Foreground).Color;
+
+                            Assert.AreEqual(expected, actual, $"{theme} {size} {state} used the wrong semantic value color.");
+                            if (theme is not "HighContrast")
+                            {
+                                var surface = ((SolidColorBrush)window.FindResource("SurfaceBrush")).Color;
+                                var contrast = ContrastRatio(actual, surface);
+                                Assert.IsGreaterThanOrEqualTo(
+                                    4.5,
+                                    contrast,
+                                    $"{theme} {size} {state} value contrast was only {contrast:F2}:1.");
+                            }
+                            window.Close();
+                        }
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+        {
+            Assert.Fail($"Semantic remaining-value color verification failed: {failure}");
+        }
+    }
+
     [TestMethod]
     public void WidgetSettingsPreserveTaskbarOverlapPreference()
     {
@@ -333,6 +407,25 @@ public sealed class WidgetInteractionTests
         public double Height => 1023;
     }
 
+    private sealed class SemanticColorModel
+    {
+        public SemanticColorModel(WidgetVisualState state)
+        {
+            VisualState = state;
+            StatusText = state.ToString();
+        }
+
+        public WidgetVisualState VisualState { get; }
+        public decimal RemainingPercent => 63;
+        public string RemainingText => "63%";
+        public string LimitLabel => "Primary limit";
+        public string StatusText { get; }
+        public string ResetText => "Resets in 2h";
+        public string AccountText => "Account hidden";
+        public bool ShowAccount => false;
+        public string ToolTipText => $"{StatusText}. {RemainingText} remaining.";
+    }
+
     private sealed class NoOpCommand : ICommand
     {
         public event EventHandler? CanExecuteChanged
@@ -356,6 +449,23 @@ public sealed class WidgetInteractionTests
 
     private static ResourceDictionary LoadDictionary(string path) =>
         (ResourceDictionary)XamlReader.Parse(File.ReadAllText(path));
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in FindVisualChildren<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
 
     private static string FindRepositoryRoot()
     {
