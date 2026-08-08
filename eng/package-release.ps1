@@ -15,6 +15,9 @@ param(
     [uri]$FeedBaseUri,
     [uri]$ReleaseNotesUri,
     [string[]]$PublisherThumbprints = @(),
+    [string]$GoogleOAuthClientId,
+    [string]$MicrosoftOAuthClientId,
+    [string]$MicrosoftOAuthTenant = 'common',
     [switch]$Production,
     [bool]$VerifyDeterminism = $true,
     [switch]$NoRestore
@@ -61,6 +64,8 @@ $rids = $Architectures | ForEach-Object { "win-$_" }
 $portableArgs = @{
     RuntimeIdentifiers = $rids; Version = $Version; OutputRoot = $releaseRoot; Configuration = $Configuration
     NoRestore = [bool]$NoRestore; UpdatePublicKeyBase64 = $buildTrustAnchor
+    GoogleOAuthClientId = $GoogleOAuthClientId; MicrosoftOAuthClientId = $MicrosoftOAuthClientId
+    MicrosoftOAuthTenant = $MicrosoftOAuthTenant
 }
 & "$PSScriptRoot/package-portable.ps1" @portableArgs | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Portable release packaging failed.' }
@@ -69,6 +74,8 @@ $msixArgs = @{
     Architectures = $Architectures; Version = $Version; OutputRoot = $releaseRoot; Configuration = $Configuration
     IdentityName = $IdentityName; Publisher = $Publisher; PublisherDisplayName = $PublisherDisplayName
     NoRestore = [bool]$NoRestore; UpdatePublicKeyBase64 = $buildTrustAnchor
+    GoogleOAuthClientId = $GoogleOAuthClientId; MicrosoftOAuthClientId = $MicrosoftOAuthClientId
+    MicrosoftOAuthTenant = $MicrosoftOAuthTenant
 }
 if ($SigningCertificatePath) { $msixArgs.CertificatePath = $SigningCertificatePath }
 if ($SigningCertificatePassword) { $msixArgs.CertificatePassword = $SigningCertificatePassword }
@@ -140,6 +147,8 @@ if ($VerifyDeterminism) {
         $secondArgs = @{
             RuntimeIdentifiers = $rids; Version = $Version; OutputRoot = $determinismRoot
             Configuration = $Configuration; NoRestore = [bool]$NoRestore; UpdatePublicKeyBase64 = $buildTrustAnchor
+            GoogleOAuthClientId = $GoogleOAuthClientId; MicrosoftOAuthClientId = $MicrosoftOAuthClientId
+            MicrosoftOAuthTenant = $MicrosoftOAuthTenant
         }
         & "$PSScriptRoot/package-portable.ps1" @secondArgs | Out-Null
         foreach ($rid in $rids) {

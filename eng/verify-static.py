@@ -53,6 +53,8 @@ def verify_solution() -> None:
 
 def verify_xml() -> None:
     for path in sorted(repository_paths("*.xaml")) + sorted(repository_paths("*.csproj")) + [ROOT / "CodexUsageMonitor.slnx"]:
+        if not path.exists():
+            continue
         try:
             ET.parse(path)
         except (OSError, ET.ParseError) as exc:

@@ -6,14 +6,14 @@
 
 A lightweight native Windows widget for monitoring Codex usage limits and reset times through the locally installed Codex App Server.
 
-[Website](https://saroo98.github.io/codex-usage-monitor/) · [Releases](https://github.com/saroo98/codex-usage-monitor/releases) · [Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [Security](SECURITY.md)
+[Website](https://saroo98.github.io/codex-usage-monitor/) · [Releases](https://github.com/saroo98/codex-usage-monitor/releases) · [Privacy](PRIVACY.md) · [Email security](EMAIL_SECURITY.md) · [Support](SUPPORT.md) · [Security](SECURITY.md)
 
 ## What it does
 
 - Shows confirmed remaining usage and reset timing in a compact always-available widget.
 - Monitors multiple local Codex profiles without browser scraping.
 - Preserves the last valid reading when Codex is delayed, offline, or unavailable.
-- Supports Windows notifications, quiet hours, local history, and optional SMTP email alerts.
+- Supports Windows notifications, quiet hours, local history, and optional self-only email alerts through Gmail, Microsoft 365, Proton Mail Bridge, or encrypted SMTP.
 - Stores settings and history locally with bounded, redacted diagnostics.
 - Handles portable updates transactionally with integrity checks and startup-health rollback.
 - Supports light, dark, High Contrast, keyboard navigation, reduced motion, and 100–200% scaling.
@@ -42,7 +42,7 @@ Official production artifacts are published only when the release checks describ
 
 Codex authentication remains owned by the installed Codex CLI. The monitor does not request a ChatGPT password and is designed not to record prompts, conversations, repository contents, browser cookies, or Codex authentication tokens.
 
-Optional email credentials are protected using Windows security facilities. Diagnostic exports are bounded and redacted, but users should still review them before sharing. See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
+Optional email credentials are protected using Windows security facilities. Email notifications are sent from the configured account back to that same account through a small, tested recipient boundary. Diagnostic exports omit email identities, notification contents, tokens, and credential references. See [EMAIL_SECURITY.md](EMAIL_SECURITY.md), [PRIVACY.md](PRIVACY.md), and [SECURITY.md](SECURITY.md).
 
 ## Build from source
 
@@ -64,6 +64,19 @@ Build and independently verify the unsigned artifact matrix:
 ```powershell
 ./eng/package-release.ps1 -Version 6.0.0 -OutputRoot artifacts/release -Configuration Release
 ```
+
+To include the public OAuth application registrations in a release build:
+
+```powershell
+./eng/package-release.ps1 -Version 6.0.0 -OutputRoot artifacts/release -Configuration Release `
+  -GoogleOAuthClientId $env:GOOGLE_OAUTH_CLIENT_ID `
+  -MicrosoftOAuthClientId $env:MICROSOFT_OAUTH_CLIENT_ID `
+  -MicrosoftOAuthTenant common
+```
+
+The same values can be passed directly to `dotnet build` or `dotnet publish` as `-p:GoogleOAuthClientId=...`, `-p:MicrosoftOAuthClientId=...`, and `-p:MicrosoftOAuthTenant=common`. These are public native-application registration identifiers. No OAuth client secret is used or embedded.
+
+The repository pins its SDK and NuGet versions, enables deterministic compiler output, builds version tags in GitHub Actions, generates `SHA256SUMS.txt`, and independently reopens and verifies release artifacts. The release tooling also tests byte-identical unsigned portable ZIP output from two builds. Other artifact types are not described as byte-for-byte reproducible.
 
 Generated builds, reports, databases, logs, and local evidence remain under ignored paths and must not be committed.
 

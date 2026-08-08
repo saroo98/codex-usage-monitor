@@ -4,6 +4,9 @@ param(
     [string[]]$RuntimeIdentifiers = @('win-x64','win-arm64'),
     [string]$Version,
     [string]$UpdatePublicKeyBase64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    [string]$GoogleOAuthClientId,
+    [string]$MicrosoftOAuthClientId,
+    [string]$MicrosoftOAuthTenant = 'common',
     [string]$OutputRoot,
     [ValidateSet('Debug','Release')]
     [string]$Configuration = 'Release',
@@ -30,6 +33,8 @@ foreach ($rid in $RuntimeIdentifiers) {
         $publishArguments = @{
             RuntimeIdentifier = $rid; SelfContained = $selfContained; Version = $Version
             Configuration = $Configuration; NoRestore = [bool]$NoRestore; UpdatePublicKeyBase64 = $UpdatePublicKeyBase64
+            GoogleOAuthClientId = $GoogleOAuthClientId; MicrosoftOAuthClientId = $MicrosoftOAuthClientId
+            MicrosoftOAuthTenant = $MicrosoftOAuthTenant
         }
         $portable = & "$PSScriptRoot/publish-portable.ps1" @publishArguments
         if ($LASTEXITCODE -ne 0) { throw "Portable publish failed for $rid/$flavor." }
