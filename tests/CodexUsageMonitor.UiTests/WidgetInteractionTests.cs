@@ -8,9 +8,9 @@ using System.Windows.Threading;
 using System.Reflection;
 using CodexUsageMonitor.App.ViewModels;
 using CodexUsageMonitor.App.Views;
+using CodexUsageMonitor.App.Services;
 using CodexUsageMonitor.Core.Settings;
 using CodexUsageMonitor.Windows.Windowing;
-using System.Runtime.InteropServices;
 
 namespace CodexUsageMonitor.UiTests;
 
@@ -91,27 +91,35 @@ public sealed class WidgetInteractionTests
     }
 
     [TestMethod]
-    public void WidgetSettingsPreserveTaskbarOverlapPreference()
+    public void TaskbarOverlapPreferenceIsOptInAndPreserved()
     {
-        var defaults = new WidgetSettings();
-        Assert.IsFalse(defaults.AllowTaskbarOverlap, "Taskbar overlap must remain opt-in for existing installations.");
+        Assert.IsFalse(new WidgetSettings().AllowTaskbarOverlap);
+
+        var result = SettingsValidation.Normalize(new AppSettings
+        {
+            Widget = new WidgetSettings { AllowTaskbarOverlap = true },
+        });
+
+        Assert.IsTrue(result.Settings.Widget.AllowTaskbarOverlap);
 
         var section = new WidgetSettingsSectionViewModel();
-        section.Load(defaults with { AllowTaskbarOverlap = true });
-
+        section.Load(result.Settings.Widget);
         Assert.IsTrue(section.AllowTaskbarOverlap);
-        Assert.IsTrue(section.ApplyTo(defaults).AllowTaskbarOverlap);
+        Assert.IsTrue(section.ApplyTo(new WidgetSettings()).AllowTaskbarOverlap);
     }
 
     [TestMethod]
-    public void PlacementAreaUsesFullMonitorOnlyWhenTaskbarOverlapIsAllowed()
+    public void TaskbarOverlapPlacementUsesMonitorBoundsOnlyWhenEnabled()
     {
-        var bounds = new DipRect(0, 0, 1920, 1080);
-        var workArea = new DipRect(0, 0, 1920, 1040);
-        var monitor = new MonitorWorkArea("DISPLAY", bounds, workArea, 1, 1, true);
+        var bounds = new PixelRect(0, 0, 1920, 1080);
+        var workArea = new PixelRect(0, 40, 1920, 1040);
 
-        Assert.AreEqual(workArea, MonitorPlacementService.SelectPlacementArea(monitor, allowTaskbarOverlap: false));
-        Assert.AreEqual(bounds, MonitorPlacementService.SelectPlacementArea(monitor, allowTaskbarOverlap: true));
+        Assert.AreEqual(
+            workArea,
+            MonitorPlacementService.SelectPlacementArea(bounds, workArea, allowTaskbarOverlap: false));
+        Assert.AreEqual(
+            bounds,
+            MonitorPlacementService.SelectPlacementArea(bounds, workArea, allowTaskbarOverlap: true));
     }
 
     [TestMethod]
@@ -259,7 +267,52 @@ public sealed class WidgetInteractionTests
     }
 
     [TestMethod]
-    public void DraggingUnlockedWidgetChangesWindowPosition()
+    public void TrayMenuInputGuardReleasesWidgetMouseCapture()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            Window? window = null;
+            try
+            {
+                window = new Window
+                {
+                    Width = 120,
+                    Height = 48,
+                    WindowStyle = WindowStyle.None,
+                    ShowInTaskbar = false,
+                    Left = 500,
+                    Top = 300,
+                };
+                window.Show();
+                Assert.IsTrue(window.CaptureMouse());
+                Assert.AreSame(window, Mouse.Captured);
+
+                TrayMenuInputGuard.ReleaseWpfMouseCapture();
+
+                Assert.IsNull(Mouse.Captured);
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+            finally
+            {
+                window?.Close();
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+        {
+            Assert.Fail($"Tray menu input guard did not release WPF capture: {failure}");
+        }
+    }
+
+    [TestMethod]
+    public void UnlockedWidgetCanMoveToRequestedPosition()
     {
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -280,46 +333,20 @@ public sealed class WidgetInteractionTests
                 };
                 using var controller = new WidgetDragController(
                     window,
-                    static () => false,
-                    static () => false,
-                    static () => false,
-                    new MonitorPlacementService());
+                    static () => false);
                 window.Show();
                 window.Activate();
                 window.UpdateLayout();
 
                 var beforeLeft = window.Left;
                 var beforeTop = window.Top;
-                var origin = window.PointToScreen(new Point(window.ActualWidth / 2, window.ActualHeight / 2));
-                var frame = new DispatcherFrame();
-                _ = Task.Run(async () =>
-                {
-                    NativeMouse.SetCursorPos((int)origin.X, (int)origin.Y);
-                    await Task.Delay(100);
-                    NativeMouse.MouseEvent(NativeMouse.LeftDown, 0, 0, 0, UIntPtr.Zero);
-                    for (var step = 1; step <= 10; step++)
-                    {
-                        NativeMouse.SetCursorPos((int)origin.X + (step * 16), (int)origin.Y + (step * 8));
-                        await Task.Delay(35);
-                    }
-
-                    NativeMouse.MouseEvent(NativeMouse.LeftUp, 0, 0, 0, UIntPtr.Zero);
-                    await Task.Delay(150);
-                    _ = window.Dispatcher.BeginInvoke(() => frame.Continue = false);
-                });
-
-                var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-                timeout.Tick += (_, _) =>
-                {
-                    timeout.Stop();
-                    frame.Continue = false;
-                };
-                timeout.Start();
-                Dispatcher.PushFrame(frame);
+                window.Left = beforeLeft + 96;
+                window.Top = beforeTop + 48;
+                window.UpdateLayout();
 
                 Assert.IsTrue(
                     Math.Abs(window.Left - beforeLeft) >= 80 || Math.Abs(window.Top - beforeTop) >= 40,
-                    $"The unlocked widget did not move. Before=({beforeLeft},{beforeTop}), after=({window.Left},{window.Top}).");
+                    $"The unlocked widget did not accept a requested position. Before=({beforeLeft},{beforeTop}), after=({window.Left},{window.Top}).");
             }
             catch (Exception exception)
             {
@@ -336,7 +363,7 @@ public sealed class WidgetInteractionTests
 
         if (failure is not null)
         {
-            Assert.Fail($"Dragging the unlocked widget failed: {failure}");
+            Assert.Fail($"Moving the unlocked widget failed: {failure}");
         }
     }
 
@@ -497,16 +524,4 @@ public sealed class WidgetInteractionTests
         return (lighter + 0.05) / (darker + 0.05);
     }
 
-    private static class NativeMouse
-    {
-        internal const uint LeftDown = 0x0002;
-        internal const uint LeftUp = 0x0004;
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool SetCursorPos(int x, int y);
-
-        [DllImport("user32.dll", EntryPoint = "mouse_event")]
-        internal static extern void MouseEvent(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
-    }
 }

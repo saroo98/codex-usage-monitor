@@ -150,15 +150,6 @@ public sealed class WidgetRenderEvidenceTests
                 RenderWindow((FrameworkElement)reset.Content, 540, 520, scale, Path.Combine(output, FileName(theme, scale, "reset-confirmation")), application);
                 generated++;
 
-                var oauth = new MicrosoftDeviceCodeDialog(
-                    new MicrosoftOAuthPrompt(
-                        "ABCD-EFGH",
-                        new Uri("https://example.invalid/device"),
-                        "Use the synthetic one-time code to verify this redacted layout.",
-                        new DateTimeOffset(2026, 8, 5, 12, 15, 0, TimeSpan.Zero)),
-                    static () => { });
-                RenderWindow((FrameworkElement)oauth.Content, 520, 390, scale, Path.Combine(output, FileName(theme, scale, "oauth-authorization")), application);
-                generated++;
             }
         }
 

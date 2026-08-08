@@ -91,12 +91,22 @@ public sealed class TrayIconManager : IDisposable
         menu.Items.Add(_startupItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Settings…", null, (_, _) => _actions.OpenSettings()));
-        menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => _actions.Exit()));
+        menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => ExitFromTray()));
         return menu;
+    }
+
+    private void ExitFromTray()
+    {
+        _menu.Close(ToolStripDropDownCloseReason.ItemClicked);
+        _notifyIcon.Visible = false;
+        _actions.Exit();
     }
 
     private async void OnMenuOpening(object? sender, CancelEventArgs eventArgs)
     {
+        // A widget drag uses WPF mouse capture. Release it before the WinForms
+        // tray menu opens so the menu receives the next pointer messages.
+        TrayMenuInputGuard.ReleaseWpfMouseCapture();
         RebuildProfiles();
         RebuildSizes();
         var settings = _settings.Current;
@@ -253,6 +263,8 @@ public sealed class TrayIconManager : IDisposable
         _widget.PropertyChanged -= OnWidgetPropertyChanged;
         _settings.Changed -= OnSettingsChanged;
         _menu.Opening -= OnMenuOpening;
+        TrayMenuInputGuard.ReleaseWpfMouseCapture();
+        _menu.Close(ToolStripDropDownCloseReason.CloseCalled);
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
         _menu.Dispose();

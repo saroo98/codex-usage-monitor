@@ -17,8 +17,11 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
     private readonly MonitorPlacementService _placements = null!;
     private readonly WidgetWindowInterop _interop = null!;
     private readonly WidgetDragController _dragController = null!;
+    private readonly WidgetMoveLifecycle _moveLifecycle = new();
     private bool _allowClose;
     private bool _loaded;
+    private bool _clampInProgress;
+    private bool _applyingSettings;
     private bool _disposed;
 
     private WidgetWindow()
@@ -40,13 +43,13 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
         ToolTipService.SetShowDuration(WidgetChrome, 30_000);
         _interop = new WidgetWindowInterop(this);
         _interop.RecoveryRequested += OnRecoveryRequested;
+        _interop.WorkAreaChanged += OnWorkAreaChanged;
         _dragController = new WidgetDragController(
             this,
             () => _settings.Current.Widget.Locked,
-            () => _settings.Current.Widget.SnapToEdges,
-            () => _settings.Current.Widget.AllowTaskbarOverlap,
-            _placements);
-        _dragController.PlacementChanged += OnPlacementChanged;
+            () => _interop.IsClickThrough);
+        _dragController.DragStarted += OnDragStarted;
+        _dragController.DragCompleted += OnDragCompleted;
         Loaded += OnLoaded;
         Closing += OnClosing;
         Closed += OnClosed;
@@ -54,6 +57,8 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
         MouseEnter += OnMouseEnter;
         MouseLeave += OnMouseLeave;
         IsVisibleChanged += OnIsVisibleChanged;
+        SizeChanged += OnSizeChanged;
+        DpiChanged += OnDpiChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         ApplySettings(_settings.Current, restorePlacement: false);
     }
@@ -72,6 +77,7 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
     public void ShowWithoutActivation()
     {
         Show();
+        RequestClamp(snap: false);
         _interop.BringToForeground();
     }
 
@@ -91,21 +97,25 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
 
     private void ApplySettings(AppSettings settings, bool restorePlacement)
     {
-        Opacity = settings.Widget.Opacity;
-        Topmost = settings.Widget.Topmost;
-        _interop.SetClickThrough(settings.Widget.ClickThrough);
-        ApplyVisualSize(settings.Widget.Size);
-
-        if (restorePlacement && _loaded)
+        _applyingSettings = true;
+        try
         {
-            var restored = _placements.Restore(
-                settings.Widget.Placement,
-                _viewModel.Width,
-                _viewModel.Height,
-                settings.Widget.SnapToEdges,
-                settings.Widget.AllowTaskbarOverlap);
-            Left = restored.Left;
-            Top = restored.Top;
+            Opacity = settings.Widget.Opacity;
+            Topmost = settings.Widget.Topmost;
+            _interop.SetClickThrough(settings.Widget.ClickThrough);
+            ApplyVisualSize(settings.Widget.Size);
+
+            if (restorePlacement && _loaded && !_dragController.IsDragging && !_moveLifecycle.IsUserMoveActive)
+            {
+                _placements.Restore(
+                    this,
+                    settings.Widget.Placement,
+                    settings.Widget.AllowTaskbarOverlap);
+            }
+        }
+        finally
+        {
+            _applyingSettings = false;
         }
     }
 
@@ -134,9 +144,75 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
     }
 
     private void OnSettingsChanged(object? sender, AppSettings settings) =>
-        Dispatcher.InvokeAsync(() => ApplySettings(settings, restorePlacement: true));
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (!_disposed)
+            {
+                ApplySettings(settings, restorePlacement: true);
+            }
+        });
 
-    private async void OnPlacementChanged(object? sender, EventArgs eventArgs)
+    private void OnSizeChanged(object sender, SizeChangedEventArgs eventArgs) => RequestClamp(snap: false);
+
+    private void OnDpiChanged(object sender, System.Windows.DpiChangedEventArgs eventArgs) => RequestClamp(snap: false);
+
+    private void OnWorkAreaChanged(object? sender, EventArgs eventArgs) => RequestClamp(snap: false);
+
+    private void OnDragStarted(object? sender, EventArgs eventArgs) => _moveLifecycle.BeginUserMove();
+
+    private void OnDragCompleted(object? sender, EventArgs eventArgs)
+    {
+        if (_moveLifecycle.CompleteUserMove(CompleteUserMove))
+        {
+            return;
+        }
+
+        CompleteUserMove();
+    }
+
+    private void RequestClamp(bool snap)
+    {
+        if (!_loaded || _disposed || _applyingSettings || _clampInProgress)
+        {
+            return;
+        }
+
+        _moveLifecycle.RequestExternalClamp(() => ClampWindow(snap));
+    }
+
+    private void ClampWindow(bool snap)
+    {
+        if (_disposed || _clampInProgress)
+        {
+            return;
+        }
+
+        _clampInProgress = true;
+        try
+        {
+            _placements.ClampWindow(
+                this,
+                snap,
+                _settings.Current.Widget.AllowTaskbarOverlap);
+        }
+        finally
+        {
+            _clampInProgress = false;
+        }
+    }
+
+    private void CompleteUserMove()
+    {
+        if (_disposed || !_loaded)
+        {
+            return;
+        }
+
+        ClampWindow(_settings.Current.Widget.SnapToEdges);
+        _ = PersistPlacementAsync();
+    }
+
+    private async Task PersistPlacementAsync()
     {
         var placement = _placements.Capture(this);
         await _settings.UpdateAsync(current => current with
@@ -206,10 +282,15 @@ public partial class WidgetWindow : Window, IDisposable, IWidgetWindow
         MouseEnter -= OnMouseEnter;
         MouseLeave -= OnMouseLeave;
         IsVisibleChanged -= OnIsVisibleChanged;
+        SizeChanged -= OnSizeChanged;
+        DpiChanged -= OnDpiChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        _dragController.PlacementChanged -= OnPlacementChanged;
+        _dragController.DragStarted -= OnDragStarted;
+        _dragController.DragCompleted -= OnDragCompleted;
         _dragController.Dispose();
         _interop.RecoveryRequested -= OnRecoveryRequested;
+        _interop.WorkAreaChanged -= OnWorkAreaChanged;
+        _moveLifecycle.CancelUserMove();
         _interop.Dispose();
         GC.SuppressFinalize(this);
     }
