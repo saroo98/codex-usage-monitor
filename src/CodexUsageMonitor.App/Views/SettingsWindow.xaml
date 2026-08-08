@@ -135,7 +135,7 @@
               <CheckBox Content="Always on top" IsChecked="{Binding Widget.Topmost}" />
               <CheckBox Content="Lock position" IsChecked="{Binding Widget.Locked}" />
               <CheckBox Content="Snap to screen edges" IsChecked="{Binding Widget.SnapToEdges}" />
-              <CheckBox Content="Allow widget over the taskbar" IsChecked="{Binding Widget.AllowTaskbarOverlap}" ToolTip="Lets the floating widget overlap the Windows taskbar." />
+              <CheckBox Content="Allow widget over the taskbar" IsChecked="{Binding Widget.AllowTaskbarOverlap}" ToolTip="Off: keep the widget inside the Windows work area. On: allow the widget over the taskbar, but keep it inside the monitor." />
               <CheckBox Content="Reduce motion" IsChecked="{Binding Widget.ReduceMotion}" />
               <CheckBox Content="Show reset time" IsChecked="{Binding Widget.ShowResetTime}" />
               <CheckBox Content="Show account label" IsChecked="{Binding Widget.ShowAccountLabel}" />
@@ -196,75 +196,103 @@
           <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Email}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
           <StackPanel>
             <TextBlock Text="Email" Style="{StaticResource SectionTitleStyle}" />
-            <TextBlock Text="Optional provider-specific delivery. Secrets are stored in Windows Credential Manager or DPAPI-protected storage." Style="{StaticResource SectionDescriptionStyle}" />
-            <Border Style="{StaticResource SettingsCardStyle}"><Grid>
-              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-              <StackPanel Margin="0,0,12,0">
-                <TextBlock Text="Provider" Style="{StaticResource FieldLabelStyle}" />
-                <ComboBox ItemsSource="{Binding Email.Providers}" SelectedItem="{Binding Email.Provider}" AutomationProperties.Name="Email provider" />
-                <TextBlock Text="Sender address" Style="{StaticResource FieldLabelStyle}" />
-                <TextBox Text="{Binding Email.SenderAddress, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Email sender address" />
-                <TextBlock Text="Recipient addresses" Style="{StaticResource FieldLabelStyle}" />
-                <TextBox Text="{Binding Email.RecipientAddress, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Email recipients" />
-                <TextBlock Text="{Binding Email.ValidationMessage}" Foreground="{DynamicResource DangerBrush}" AutomationProperties.LiveSetting="Polite" />
-                <CheckBox Content="Include masked account label" IsChecked="{Binding Email.IncludeAccountLabel}" Margin="0,14,0,0" />
-              </StackPanel>
-              <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                <StackPanel IsEnabled="{Binding Email.IsGenericSmtp}">
-                  <TextBlock Text="SMTP host" Style="{StaticResource FieldLabelStyle}" />
-                  <TextBox Text="{Binding Email.SmtpHost, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP server" />
-                  <UniformGrid Columns="2">
-                    <StackPanel Margin="0,0,8,0"><TextBlock Text="Port" Style="{StaticResource FieldLabelStyle}" /><TextBox Text="{Binding Email.SmtpPort, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP port" /></StackPanel>
-                    <StackPanel Margin="8,0,0,0"><TextBlock Text="Security" Style="{StaticResource FieldLabelStyle}" /><ComboBox ItemsSource="{Binding Email.SmtpSecurityModes}" SelectedItem="{Binding Email.SmtpSecurity}" AutomationProperties.Name="SMTP security" /></StackPanel>
-                  </UniformGrid>
-                  <TextBlock Text="Username, optional" Style="{StaticResource FieldLabelStyle}" />
-                  <TextBox Text="{Binding Email.SmtpUsername, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP username" />
-                  <TextBlock Text="SMTP password or app password" Style="{StaticResource FieldLabelStyle}" />
-                  <PasswordBox x:Name="SmtpPasswordBox" AutomationProperties.Name="SMTP password" MaxLength="1024" />
-                  <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <Button Content="Store securely" Click="OnStoreSmtpPassword" Margin="0,0,8,0" />
-                    <Button Content="Remove" Click="OnRemoveSmtpPassword" IsEnabled="{Binding Email.CredentialStored}" />
-                  </StackPanel>
-                  <TextBlock Text="{Binding Email.CredentialStatus}" Style="{StaticResource HintStyle}" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="Optional notifications sent from your account back to that same account." Style="{StaticResource SectionDescriptionStyle}" />
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <TextBlock Text="Provider" Style="{StaticResource FieldLabelStyle}" />
+              <ComboBox ItemsSource="{Binding Email.Providers}"
+                        DisplayMemberPath="DisplayName"
+                        SelectedValuePath="Mode"
+                        SelectedValue="{Binding Email.Provider}"
+                        AutomationProperties.Name="Email provider" />
+              <CheckBox Content="Enable email notifications" IsChecked="{Binding Email.Enabled}" Margin="0,14,0,0" />
+              <TextBlock Text="{Binding Email.ValidationMessage}" Foreground="{DynamicResource DangerBrush}" AutomationProperties.LiveSetting="Polite" Margin="0,8,0,0" />
+            </StackPanel></Border>
+
+            <Border>
+              <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource SettingsCardStyle}">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers><DataTrigger Binding="{Binding Email.IsOAuthProvider}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                </Style>
+              </Border.Style>
+              <StackPanel>
+                <TextBlock Text="{Binding Email.ConnectedAsText}" FontWeight="SemiBold" />
+                <TextBlock Text="Notifications will only be addressed to this account." Style="{StaticResource HintStyle}" Margin="0,6,0,0" />
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                  <Button Content="{Binding Email.OAuthConnectButtonText}" Click="OnConnectOAuth" IsEnabled="{Binding Email.CanChangeOAuthConnection}" Margin="0,0,8,0" />
+                  <Button Content="Send test notification" Command="{Binding TestEmailCommand}" IsEnabled="{Binding Email.OAuthConnected}" Margin="0,0,8,0" />
+                  <Button Content="Disconnect" Click="OnDisconnectOAuth" IsEnabled="{Binding Email.CanDisconnectOAuth}" />
                 </StackPanel>
-                <StackPanel IsEnabled="{Binding Email.IsOAuthProvider}" Margin="0,12,0,0">
-                  <TextBlock Text="OAuth client ID" Style="{StaticResource FieldLabelStyle}" />
-                  <TextBox Text="{Binding Email.OAuthClientId, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="OAuth client ID" />
-                  <TextBlock Text="Microsoft tenant" Style="{StaticResource FieldLabelStyle}" />
-                  <TextBox Text="{Binding Email.OAuthTenant, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding Email.IsMicrosoftOAuth}" AutomationProperties.Name="Microsoft tenant" />
-                  <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button Content="Connect" Click="OnConnectOAuth" IsEnabled="{Binding Email.CanChangeOAuthConnection}" Margin="0,0,8,0" />
-                    <Button Content="Disconnect" Click="OnDisconnectOAuth" IsEnabled="{Binding Email.CanDisconnectOAuth}" />
-                  </StackPanel>
-                  <TextBlock Text="{Binding Email.OAuthConnectionStatus}" Style="{StaticResource HintStyle}" AutomationProperties.LiveSetting="Polite" />
-                  <TextBlock Text="Provider registrations are supplied by the release owner. No OAuth client secret is embedded." Style="{StaticResource HintStyle}" Margin="0,8,0,0" />
-                </StackPanel>
+                <TextBlock Text="{Binding Email.OAuthConnectionStatus}" Style="{StaticResource HintStyle}" AutomationProperties.LiveSetting="Polite" Margin="0,8,0,0" />
               </StackPanel>
-            </Grid></Border>
-            <Button Content="Send test email" Command="{Binding TestEmailCommand}" HorizontalAlignment="Left" />
+            </Border>
+
+            <Border>
+              <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource SettingsCardStyle}">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                  <Style.Triggers><DataTrigger Binding="{Binding Email.IsSmtpProvider}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                </Style>
+              </Border.Style>
+              <StackPanel>
+                <TextBlock Text="Proton Mail Bridge" FontWeight="SemiBold">
+                  <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Email.IsProtonBridge}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="Open Proton Mail Bridge and select your account. Enter the username and password that Bridge provides. Never enter your normal Proton password." TextWrapping="Wrap" Margin="0,6,0,10">
+                  <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource HintStyle}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Email.IsProtonBridge}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="Email address" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding Email.SenderAddress, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Configured email account" />
+                <UniformGrid Columns="2">
+                  <StackPanel Margin="0,0,8,0"><TextBlock Text="SMTP host" Style="{StaticResource FieldLabelStyle}" /><TextBox Text="{Binding Email.SmtpHost, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP server" /></StackPanel>
+                  <StackPanel Margin="8,0,0,0"><TextBlock Text="Port" Style="{StaticResource FieldLabelStyle}" /><TextBox Text="{Binding Email.SmtpPort, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP port" /></StackPanel>
+                </UniformGrid>
+                <TextBlock Text="Encrypted transport" Style="{StaticResource FieldLabelStyle}" />
+                <ComboBox ItemsSource="{Binding Email.SmtpSecurityModes}" SelectedItem="{Binding Email.SmtpSecurity}" AutomationProperties.Name="SMTP security" />
+                <TextBlock Text="Username" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding Email.SmtpUsername, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMTP username" />
+                <TextBlock Text="Bridge, app, or SMTP password" Style="{StaticResource FieldLabelStyle}" />
+                <PasswordBox x:Name="SmtpPasswordBox" AutomationProperties.Name="SMTP password" MaxLength="1024" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Content="Store securely" Click="OnStoreSmtpPassword" Margin="0,0,8,0" />
+                  <Button Content="Send test notification" Command="{Binding TestEmailCommand}" IsEnabled="{Binding Email.CredentialStored}" Margin="0,0,8,0" />
+                  <Button Content="Remove" Click="OnRemoveSmtpPassword" IsEnabled="{Binding Email.CredentialStored}" />
+                </StackPanel>
+                <TextBlock Text="{Binding Email.CredentialStatus}" Style="{StaticResource HintStyle}" AutomationProperties.LiveSetting="Polite" Margin="0,8,0,0" />
+              </StackPanel>
+            </Border>
+
+            <CheckBox Content="Include masked Codex account label" IsChecked="{Binding Email.IncludeAccountLabel}" Margin="0,4,0,12" />
+            <Border Style="{StaticResource SettingsCardStyle}"><StackPanel>
+              <TextBlock Text="Privacy &amp; security" FontWeight="SemiBold" />
+              <TextBlock Text="Email notifications are sent directly from your configured email account to that same account. Codex Usage Monitor does not send your credentials, tokens, account information, or notification contents to the project maintainer."
+                         TextWrapping="Wrap" Style="{StaticResource HintStyle}" Margin="0,8,0,0" />
+              <TextBlock Text="The app does not read your mailbox. Credentials required for automatic notifications are stored only on this device using Windows-protected storage. Notifications are sent only after you enable them or explicitly request a test message. The self-recipient restriction is enforced and tested in the open-source code; providers themselves may technically support other recipients."
+                         TextWrapping="Wrap" Style="{StaticResource HintStyle}" Margin="0,8,0,0" />
+            </StackPanel></Border>
           </StackPanel>
         </Grid>
 
         <Grid>
           <Grid.Style><Style TargetType="Grid" BasedOn="{StaticResource SectionPanelStyle}"><Style.Triggers><DataTrigger Binding="{Binding SelectedSection}" Value="{x:Static vm:SettingsSection.Accounts}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
           <StackPanel>
-            <TextBlock Text="Accounts and Profiles" Style="{StaticResource SectionTitleStyle}" />
-            <TextBlock Text="Each enabled profile owns an isolated Codex App Server process and account history scope." Style="{StaticResource SectionDescriptionStyle}" />
+            <TextBlock Text="Codex profiles" Style="{StaticResource SectionTitleStyle}" />
+            <TextBlock Text="Each enabled profile runs a separate Codex App Server process. Use a different CODEX_HOME directory for each Codex account." Style="{StaticResource SectionDescriptionStyle}" />
             <Border Style="{StaticResource SettingsCardStyle}"><Grid Height="330">
               <Grid.ColumnDefinitions><ColumnDefinition Width="220" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
               <DockPanel>
                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-                  <Button Content="Add" Command="{Binding AddProfileCommand}" Margin="0,0,8,0" />
-                  <Button Content="Remove" Command="{Binding RemoveProfileCommand}" />
+                  <Button Content="Add profile" Command="{Binding AddProfileCommand}" Margin="0,0,8,0" />
+                  <Button Content="Remove profile" Command="{Binding RemoveProfileCommand}" />
                 </StackPanel>
                 <ListBox ItemsSource="{Binding Accounts.Profiles}" SelectedItem="{Binding Accounts.SelectedProfile}" DisplayMemberPath="Name" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}" AutomationProperties.Name="Codex profiles" />
               </DockPanel>
               <StackPanel Grid.Column="2" DataContext="{Binding Accounts.SelectedProfile}">
                 <TextBlock Text="Profile name" Style="{StaticResource FieldLabelStyle}" />
                 <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile name" />
-                <TextBlock Text="CODEX_HOME override" Style="{StaticResource FieldLabelStyle}" />
-                <TextBox Text="{Binding CodexHome, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile Codex home folder" />
-                <TextBlock Text="Leave blank to use the installed Codex CLI default. Paths are never copied into support bundles." Style="{StaticResource HintStyle}" />
+                <TextBlock Text="Codex home directory" Style="{StaticResource FieldLabelStyle}" />
+                <TextBox Text="{Binding CodexHome, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Profile Codex home folder (CODEX_HOME override)" />
+                <TextBlock Text="Use a different directory for each Codex account. Leave this field empty to use the default CODEX_HOME value. Paths are never copied into support bundles." Style="{StaticResource HintStyle}" />
                 <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,16,0,0" />
                 <CheckBox Content="Monitor in background" IsChecked="{Binding MonitorInBackground}" />
               </StackPanel>

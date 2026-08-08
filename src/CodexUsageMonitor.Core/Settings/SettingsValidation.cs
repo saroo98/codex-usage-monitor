@@ -15,8 +15,6 @@ public sealed record SettingsValidationResult(
 
 public static class SettingsValidation
 {
-    private const int MaximumRecipients = 16;
-
     public static SettingsValidationResult Normalize(
         AppSettings? input,
         bool canPersist = true,
@@ -68,8 +66,7 @@ public static class SettingsValidation
             issues.Add(new("profiles", "settings.profile_defaulted"));
         }
 
-        var recipients = NormalizeRecipients(source.Email.Recipients, issues);
-        ValidateEmail(source.Email, recipients, issues);
+        ValidateEmail(source.Email, issues);
         var normalized = source with
         {
             SchemaVersion = AppSettings.CurrentSchemaVersion,
@@ -94,48 +91,55 @@ public static class SettingsValidation
             },
             Email = source.Email with
             {
+                Enabled = source.Email.Provider is not EmailProviderMode.Off && source.Email.Enabled,
+                ConnectedAddress = NormalizeOptional(source.Email.ConnectedAddress),
                 SenderAddress = NormalizeOptional(source.Email.SenderAddress),
-                Recipients = recipients,
+                Recipients = [],
                 SmtpHost = NormalizeOptional(source.Email.SmtpHost),
                 SmtpPort = Math.Clamp(source.Email.SmtpPort, 1, 65535),
                 SmtpUsername = NormalizeOptional(source.Email.SmtpUsername),
+                SmtpSecurity = source.Email.SmtpSecurity is SmtpSecurityMode.None
+                    ? SmtpSecurityMode.StartTls
+                    : source.Email.SmtpSecurity,
                 CredentialReference = NormalizeReference(source.Email.CredentialReference),
                 OAuthClientId = NormalizeOptional(source.Email.OAuthClientId),
                 OAuthTenant = NormalizeOptional(source.Email.OAuthTenant) ?? "common",
                 OAuthTokenReference = NormalizeReference(source.Email.OAuthTokenReference),
                 OAuthRegistrationId = NormalizeReference(source.Email.OAuthRegistrationId),
+                ObsoleteSecretReferences = source.Email.ObsoleteSecretReferences
+                    .Select(NormalizeReference)
+                    .Where(static value => value is not null)
+                    .Cast<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(8)
+                    .ToArray(),
             },
             Profiles = profiles,
         };
         return new SettingsValidationResult(normalized, issues.AsReadOnly(), canPersist, sourceSchemaVersion);
     }
 
-    private static string[] NormalizeRecipients(
-        IEnumerable<string>? recipients,
-        List<SettingsValidationIssue> issues)
-    {
-        var values = (recipients ?? [])
-            .Where(static value => !string.IsNullOrWhiteSpace(value))
-            .Select(static value => value.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(MaximumRecipients + 1)
-            .ToArray();
-        if (values.Length > MaximumRecipients)
-        {
-            issues.Add(new("email.recipients", "settings.recipient_limit"));
-            values = values[..MaximumRecipients];
-        }
-
-        return values;
-    }
-
     private static void ValidateEmail(
         EmailSettings settings,
-        string[] recipients,
         List<SettingsValidationIssue> issues)
     {
-        if (settings.Provider is EmailProviderMode.Disabled)
+        if (settings.Provider is EmailProviderMode.Off)
         {
+            return;
+        }
+
+        if (settings.Provider is EmailProviderMode.Gmail or EmailProviderMode.Microsoft365)
+        {
+            if (!IsEmail(settings.ConnectedAddress))
+            {
+                issues.Add(new("email.connectedAddress", "settings.email_connection_required"));
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.OAuthClientId) || string.IsNullOrWhiteSpace(settings.OAuthTokenReference))
+            {
+                issues.Add(new("email.oauth", "settings.oauth_connection_required"));
+            }
+
             return;
         }
 
@@ -144,38 +148,27 @@ public static class SettingsValidation
             issues.Add(new("email.senderAddress", "settings.invalid_email"));
         }
 
-        if (recipients.Length == 0)
+        if (string.IsNullOrWhiteSpace(settings.SmtpHost))
         {
-            issues.Add(new("email.recipients", "settings.recipient_required"));
-        }
-        else
-        {
-            for (var index = 0; index < recipients.Length; index++)
-            {
-                if (!IsEmail(recipients[index]))
-                {
-                    issues.Add(new($"email.recipients[{index}]", "settings.invalid_email"));
-                }
-            }
+            issues.Add(new("email.smtpHost", "settings.smtp_host_required"));
         }
 
-        if (settings.Provider is EmailProviderMode.GenericSmtp)
+        if (settings.SmtpSecurity is SmtpSecurityMode.None)
         {
-            if (string.IsNullOrWhiteSpace(settings.SmtpHost))
-            {
-                issues.Add(new("email.smtpHost", "settings.smtp_host_required"));
-            }
-
-            if (settings.SmtpSecurity is SmtpSecurityMode.None && settings.SmtpPort is not 25)
-            {
-                issues.Add(new("email.smtpSecurity", "settings.smtp_unencrypted_warning"));
-            }
+            issues.Add(new("email.smtpSecurity", "settings.smtp_encryption_required"));
         }
 
-        if ((settings.Provider is EmailProviderMode.MicrosoftOAuth or EmailProviderMode.GoogleOAuth) &&
-            string.IsNullOrWhiteSpace(settings.OAuthClientId))
+        if (settings.Provider is EmailProviderMode.ProtonMailBridge)
         {
-            issues.Add(new("email.oauthClientId", "settings.oauth_client_required"));
+            if (settings.SmtpHost is not ("127.0.0.1" or "::1" or "localhost"))
+            {
+                issues.Add(new("email.smtpHost", "settings.proton_bridge_loopback_required"));
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.SmtpUsername))
+            {
+                issues.Add(new("email.smtpUsername", "settings.proton_bridge_username_required"));
+            }
         }
     }
 

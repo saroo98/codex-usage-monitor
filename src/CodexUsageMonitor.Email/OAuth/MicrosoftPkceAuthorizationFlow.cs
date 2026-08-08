@@ -6,41 +6,55 @@ using CodexUsageMonitor.Core.Abstractions;
 
 namespace CodexUsageMonitor.Email.OAuth;
 
-public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
+public interface IMicrosoftPkceAuthorizationFlow
 {
-    private static readonly Uri AuthorizationEndpoint = new("https://accounts.google.com/o/oauth2/v2/auth");
-    private static readonly Uri TokenEndpoint = new("https://oauth2.googleapis.com/token");
+    Task<OAuthTokenSet> ConnectAsync(
+        string tenant,
+        string clientId,
+        IReadOnlyList<string> scopes,
+        TimeSpan timeout,
+        CancellationToken cancellationToken);
+}
+
+public sealed class MicrosoftPkceAuthorizationFlow : IMicrosoftPkceAuthorizationFlow
+{
     private readonly HttpClient _httpClient;
-    private readonly OAuthTokenStore _store;
     private readonly IBrowserLauncher _browser;
     private readonly IClock _clock;
 
-    public GooglePkceAuthorizationFlow(HttpClient httpClient, OAuthTokenStore store, IBrowserLauncher browser, IClock clock)
+    public MicrosoftPkceAuthorizationFlow(HttpClient httpClient, IBrowserLauncher browser, IClock clock)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _store = store ?? throw new ArgumentNullException(nameof(store));
         _browser = browser ?? throw new ArgumentNullException(nameof(browser));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
 
+    public static IReadOnlyList<string> GraphScopes { get; } =
+        ["offline_access", "openid", "email", "User.Read", "Mail.Send"];
+
     public async Task<OAuthTokenSet> ConnectAsync(
+        string tenant,
         string clientId,
-        string tokenStoreKey,
         IReadOnlyList<string> scopes,
         TimeSpan timeout,
         CancellationToken cancellationToken)
     {
+        ValidateTenant(tenant);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+        ArgumentNullException.ThrowIfNull(scopes);
         var verifier = Base64Url(RandomNumberGenerator.GetBytes(64));
         var challenge = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
         var state = Base64Url(RandomNumberGenerator.GetBytes(32));
         var port = ReserveLoopbackPort();
-        var redirectUri = new Uri($"http://127.0.0.1:{port}/oauth2/callback/");
+        var redirectUri = new Uri($"http://localhost:{port}/oauth2/callback/");
         using var listener = new HttpListener();
         listener.Prefixes.Add(redirectUri.AbsoluteUri);
         listener.Start();
-        var authorizationUri = BuildAuthorizationUri(clientId, redirectUri, scopes, challenge, state);
-        await _browser.OpenAsync(authorizationUri, cancellationToken).ConfigureAwait(false);
+        var authorizationEndpoint = new Uri($"https://login.microsoftonline.com/{Uri.EscapeDataString(tenant)}/oauth2/v2.0/authorize");
+        var tokenEndpoint = new Uri($"https://login.microsoftonline.com/{Uri.EscapeDataString(tenant)}/oauth2/v2.0/token");
+        await _browser.OpenAsync(
+            BuildAuthorizationUri(authorizationEndpoint, clientId, redirectUri, scopes, challenge, state),
+            cancellationToken).ConfigureAwait(false);
 
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(timeout);
@@ -54,10 +68,9 @@ public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
             throw new OAuthProtocolException("oauth.authorization_timeout", HttpStatusCode.RequestTimeout);
         }
 
-        var query = context.Request.QueryString;
-        var returnedState = query["state"];
-        var code = query["code"];
-        var error = query["error"];
+        var returnedState = context.Request.QueryString["state"];
+        var code = context.Request.QueryString["code"];
+        var error = context.Request.QueryString["error"];
         if (!CryptographicOperations.FixedTimeEquals(
                 Encoding.UTF8.GetBytes(state),
                 Encoding.UTF8.GetBytes(returnedState ?? string.Empty)))
@@ -73,28 +86,24 @@ public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
         }
 
         await RespondAsync(context.Response, "Connected", "You can close this tab and return to Codex Usage Monitor.").ConfigureAwait(false);
-        var fields = new Dictionary<string, string>
-        {
-            ["client_id"] = clientId,
-            ["code"] = code,
-            ["code_verifier"] = verifier,
-            ["grant_type"] = "authorization_code",
-            ["redirect_uri"] = redirectUri.AbsoluteUri,
-        };
         using var tokenResponse = await OAuthHttpProtocol.PostFormAsync(
             _httpClient,
-            TokenEndpoint,
-            fields,
+            tokenEndpoint,
+            new Dictionary<string, string>
+            {
+                ["client_id"] = clientId.Trim(),
+                ["code"] = code,
+                ["code_verifier"] = verifier,
+                ["grant_type"] = "authorization_code",
+                ["redirect_uri"] = redirectUri.AbsoluteUri,
+                ["scope"] = string.Join(' ', scopes),
+            },
             cancellationToken).ConfigureAwait(false);
-        var tokens = OAuthHttpProtocol.ParseTokenSet(tokenResponse.RootElement, _clock.UtcNow);
-        await _store.SaveAsync(tokenStoreKey, tokens, cancellationToken).ConfigureAwait(false);
-        return tokens;
+        return OAuthHttpProtocol.ParseTokenSet(tokenResponse.RootElement, _clock.UtcNow);
     }
 
-    public static IReadOnlyList<string> GmailApiScopes { get; } =
-        ["openid", "email", "https://www.googleapis.com/auth/gmail.send"];
-
     private static Uri BuildAuthorizationUri(
+        Uri endpoint,
         string clientId,
         Uri redirectUri,
         IReadOnlyList<string> scopes,
@@ -103,19 +112,28 @@ public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
     {
         var values = new Dictionary<string, string>
         {
-            ["client_id"] = clientId,
+            ["client_id"] = clientId.Trim(),
             ["redirect_uri"] = redirectUri.AbsoluteUri,
             ["response_type"] = "code",
+            ["response_mode"] = "query",
             ["scope"] = string.Join(' ', scopes),
             ["code_challenge"] = challenge,
             ["code_challenge_method"] = "S256",
             ["state"] = state,
-            ["access_type"] = "offline",
-            ["prompt"] = "consent",
+            ["prompt"] = "select_account",
         };
         var query = string.Join('&', values.Select(pair =>
             $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"));
-        return new UriBuilder(AuthorizationEndpoint) { Query = query }.Uri;
+        return new UriBuilder(endpoint) { Query = query }.Uri;
+    }
+
+    private static void ValidateTenant(string tenant)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
+        if (tenant.Length > 128 || tenant.Any(static character => !(char.IsAsciiLetterOrDigit(character) || character is '-' or '.')))
+        {
+            throw new ArgumentException("OAuth tenant is invalid.", nameof(tenant));
+        }
     }
 
     private static int ReserveLoopbackPort()
@@ -134,7 +152,7 @@ public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
 
     private static async Task RespondAsync(HttpListenerResponse response, string title, string body)
     {
-        var payload = Encoding.UTF8.GetBytes($"<!doctype html><meta charset=\"utf-8\"><title>{WebUtility.HtmlEncode(title)}</title><body style=\"font:16px Segoe UI,sans-serif;padding:40px;background:#11151b;color:#f4f7fb\"><h1>{WebUtility.HtmlEncode(title)}</h1><p>{WebUtility.HtmlEncode(body)}</p></body>");
+        var payload = Encoding.UTF8.GetBytes($"<!doctype html><meta charset=\"utf-8\"><title>{WebUtility.HtmlEncode(title)}</title><body><h1>{WebUtility.HtmlEncode(title)}</h1><p>{WebUtility.HtmlEncode(body)}</p></body>");
         response.ContentType = "text/html; charset=utf-8";
         response.ContentLength64 = payload.Length;
         await response.OutputStream.WriteAsync(payload).ConfigureAwait(false);

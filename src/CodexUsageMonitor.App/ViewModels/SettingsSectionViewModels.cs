@@ -241,155 +241,218 @@ public sealed class NotificationSettingsSectionViewModel : ValidatedSettingsSect
             : throw new FormatException($"Enter the quiet-hours {label} time in 24-hour HH:mm format.");
 }
 
+public sealed record EmailProviderChoice(EmailProviderMode Mode, string DisplayName);
+
 public sealed class EmailSettingsSectionViewModel : ValidatedSettingsSectionViewModel
 {
-    private EmailProviderMode _provider;
+    private EmailProviderMode _provider = EmailProviderMode.Off;
+    private bool _enabled;
+    private string? _connectedAddress;
     private string? _senderAddress;
-    private string? _recipientAddress;
     private string? _smtpUsername;
-    private SmtpSecurityMode _smtpSecurity;
+    private SmtpSecurityMode _smtpSecurity = SmtpSecurityMode.StartTls;
     private string? _smtpHost;
-    private int _smtpPort;
-    private string? _oauthClientId;
-    private string? _oauthTenant;
+    private int _smtpPort = 587;
     private bool _includeAccountLabel;
     private string _credentialStatus = "Not stored";
     private bool _credentialStored;
     private string _oauthConnectionStatus = "Not connected";
     private bool _oauthConnected;
     private bool _oauthBusy;
+    private bool _googleConnectionAvailable;
+    private bool _microsoftConnectionAvailable;
 
-    public Array Providers { get; } = Enum.GetValues<EmailProviderMode>();
-    public Array SmtpSecurityModes { get; } = Enum.GetValues<SmtpSecurityMode>();
+    public IReadOnlyList<EmailProviderChoice> Providers { get; } =
+    [
+        new(EmailProviderMode.Gmail, "Gmail"),
+        new(EmailProviderMode.Microsoft365, "Outlook / Microsoft 365"),
+        new(EmailProviderMode.ProtonMailBridge, "Proton Mail"),
+        new(EmailProviderMode.OtherSmtp, "Other email (SMTP) [Advanced]"),
+        new(EmailProviderMode.Off, "Off"),
+    ];
+
+    public IReadOnlyList<SmtpSecurityMode> SmtpSecurityModes { get; } =
+        [SmtpSecurityMode.StartTls, SmtpSecurityMode.Tls];
+
     public EmailProviderMode Provider
     {
         get => _provider;
         set
         {
-            if (SetProperty(ref _provider, value))
+            if (!SetProperty(ref _provider, value)) return;
+            if (value is EmailProviderMode.Off) Enabled = false;
+            if (value is EmailProviderMode.ProtonMailBridge)
             {
-                OnPropertyChanged(nameof(IsGenericSmtp));
-                OnPropertyChanged(nameof(IsOAuthProvider));
-                OnPropertyChanged(nameof(IsMicrosoftOAuth));
-                OnPropertyChanged(nameof(CanChangeOAuthConnection));
-                OnPropertyChanged(nameof(CanDisconnectOAuth));
-                Validate();
+                SmtpHost = "127.0.0.1";
+                SmtpPort = 1025;
+                SmtpSecurity = SmtpSecurityMode.StartTls;
             }
+            RaiseProviderProperties();
+            Validate();
         }
     }
+
+    public bool Enabled { get => _enabled; set { if (SetProperty(ref _enabled, value)) Validate(); } }
     public string? SenderAddress { get => _senderAddress; set { if (SetProperty(ref _senderAddress, value)) Validate(); } }
-    public string? RecipientAddress { get => _recipientAddress; set { if (SetProperty(ref _recipientAddress, value)) Validate(); } }
     public string? SmtpHost { get => _smtpHost; set { if (SetProperty(ref _smtpHost, value)) Validate(); } }
     public int SmtpPort { get => _smtpPort; set => SetProperty(ref _smtpPort, Math.Clamp(value, 1, 65535)); }
-    public string? SmtpUsername { get => _smtpUsername; set => SetProperty(ref _smtpUsername, value); }
-    public SmtpSecurityMode SmtpSecurity { get => _smtpSecurity; set => SetProperty(ref _smtpSecurity, value); }
-    public string? OAuthClientId { get => _oauthClientId; set { if (SetProperty(ref _oauthClientId, value)) Validate(); } }
-    public string? OAuthTenant { get => _oauthTenant; set => SetProperty(ref _oauthTenant, value); }
+    public string? SmtpUsername { get => _smtpUsername; set { if (SetProperty(ref _smtpUsername, value)) Validate(); } }
+    public SmtpSecurityMode SmtpSecurity { get => _smtpSecurity; set { if (SetProperty(ref _smtpSecurity, value)) Validate(); } }
     public bool IncludeAccountLabel { get => _includeAccountLabel; set => SetProperty(ref _includeAccountLabel, value); }
-    public bool IsGenericSmtp => Provider is EmailProviderMode.GenericSmtp;
-    public bool IsOAuthProvider => Provider is EmailProviderMode.MicrosoftOAuth or EmailProviderMode.GoogleOAuth;
-    public bool IsMicrosoftOAuth => Provider is EmailProviderMode.MicrosoftOAuth;
+    public bool IsOtherSmtp => Provider is EmailProviderMode.OtherSmtp;
+    public bool IsProtonBridge => Provider is EmailProviderMode.ProtonMailBridge;
+    public bool IsSmtpProvider => IsOtherSmtp || IsProtonBridge;
+    public bool IsOAuthProvider => Provider is EmailProviderMode.Microsoft365 or EmailProviderMode.Gmail;
+    public bool IsMicrosoftOAuth => Provider is EmailProviderMode.Microsoft365;
+    public bool ShowOAuthConnect => IsOAuthProvider && !OAuthConnected;
+    public bool ShowOAuthConnected => IsOAuthProvider && OAuthConnected;
+    public string OAuthConnectButtonText => Provider is EmailProviderMode.Gmail ? "Connect with Google" : "Connect with Microsoft";
+    public string ConnectedAsText => string.IsNullOrWhiteSpace(_connectedAddress) ? "Not connected" : $"Connected as {_connectedAddress}";
     public string CredentialStatus { get => _credentialStatus; internal set => SetProperty(ref _credentialStatus, value); }
     public bool CredentialStored { get => _credentialStored; internal set => SetProperty(ref _credentialStored, value); }
     public string OAuthConnectionStatus { get => _oauthConnectionStatus; internal set => SetProperty(ref _oauthConnectionStatus, value); }
+
+    public bool GoogleConnectionAvailable
+    {
+        get => _googleConnectionAvailable;
+        set { if (SetProperty(ref _googleConnectionAvailable, value)) OnPropertyChanged(nameof(CanChangeOAuthConnection)); }
+    }
+
+    public bool MicrosoftConnectionAvailable
+    {
+        get => _microsoftConnectionAvailable;
+        set { if (SetProperty(ref _microsoftConnectionAvailable, value)) OnPropertyChanged(nameof(CanChangeOAuthConnection)); }
+    }
+
     public bool OAuthConnected
     {
         get => _oauthConnected;
         internal set
         {
-            if (SetProperty(ref _oauthConnected, value)) OnPropertyChanged(nameof(CanDisconnectOAuth));
+            if (!SetProperty(ref _oauthConnected, value)) return;
+            OnPropertyChanged(nameof(CanDisconnectOAuth));
+            OnPropertyChanged(nameof(ShowOAuthConnect));
+            OnPropertyChanged(nameof(ShowOAuthConnected));
+            Validate();
         }
     }
+
     public bool OAuthBusy
     {
         get => _oauthBusy;
         set
         {
-            if (SetProperty(ref _oauthBusy, value))
-            {
-                OnPropertyChanged(nameof(CanChangeOAuthConnection));
-                OnPropertyChanged(nameof(CanDisconnectOAuth));
-            }
+            if (!SetProperty(ref _oauthBusy, value)) return;
+            OnPropertyChanged(nameof(CanChangeOAuthConnection));
+            OnPropertyChanged(nameof(CanDisconnectOAuth));
         }
     }
-    public bool CanChangeOAuthConnection =>
-        IsOAuthProvider
-        && !OAuthBusy
-        && MailAddress.TryCreate(SenderAddress, out _)
-        && !string.IsNullOrWhiteSpace(OAuthClientId);
+
+    public bool CanChangeOAuthConnection => IsOAuthProvider && !OAuthBusy &&
+        (Provider is EmailProviderMode.Gmail ? GoogleConnectionAvailable : MicrosoftConnectionAvailable);
     public bool CanDisconnectOAuth => OAuthConnected && !OAuthBusy;
+
+    internal void SetConnectedAddress(string? address)
+    {
+        _connectedAddress = Normalize(address);
+        OAuthConnected = MailAddress.TryCreate(_connectedAddress, out _);
+        OnPropertyChanged(nameof(ConnectedAsText));
+        Validate();
+    }
 
     internal void Load(EmailSettings settings)
     {
         Provider = settings.Provider;
+        Enabled = settings.Enabled;
+        _connectedAddress = settings.ConnectedAddress;
         SenderAddress = settings.SenderAddress;
-        RecipientAddress = string.Join(", ", settings.Recipients);
         SmtpHost = settings.SmtpHost;
         SmtpPort = settings.SmtpPort;
         SmtpUsername = settings.SmtpUsername;
         SmtpSecurity = settings.SmtpSecurity;
-        OAuthClientId = settings.OAuthClientId;
-        OAuthTenant = settings.OAuthTenant;
         IncludeAccountLabel = settings.IncludeAccountLabel;
+        OAuthConnected = MailAddress.TryCreate(_connectedAddress, out _);
+        OnPropertyChanged(nameof(ConnectedAsText));
         Validate();
     }
 
-    internal EmailSettings ApplyTo(EmailSettings current, bool keepSmtpCredential, bool keepOAuthTokens) => current with
+    internal EmailSettings ApplyTo(EmailSettings current, bool keepSmtpCredential, bool keepOAuthTokens)
     {
-        Provider = Provider,
-        SenderAddress = Normalize(SenderAddress),
-        Recipients = ParseRecipients(RecipientAddress),
-        SmtpHost = Normalize(SmtpHost),
-        SmtpPort = SmtpPort,
-        SmtpUsername = Normalize(SmtpUsername),
-        SmtpSecurity = SmtpSecurity,
-        CredentialReference = keepSmtpCredential ? current.CredentialReference : null,
-        OAuthClientId = Normalize(OAuthClientId),
-        OAuthTenant = Normalize(OAuthTenant),
-        OAuthTokenReference = keepOAuthTokens ? current.OAuthTokenReference : null,
-        OAuthRegistrationId = keepOAuthTokens ? current.OAuthRegistrationId : null,
-        IncludeAccountLabel = IncludeAccountLabel,
-    };
+        var oauth = IsOAuthProvider;
+        var smtp = IsSmtpProvider;
+        return current with
+        {
+            Provider = Provider,
+            Enabled = Provider is not EmailProviderMode.Off && Enabled,
+            ConnectedAddress = oauth && keepOAuthTokens ? current.ConnectedAddress : null,
+            SenderAddress = smtp ? Normalize(SenderAddress) : null,
+            Recipients = [],
+            SmtpHost = smtp ? Normalize(SmtpHost) : null,
+            SmtpPort = SmtpPort,
+            SmtpUsername = smtp ? Normalize(SmtpUsername) : null,
+            SmtpSecurity = smtp ? SmtpSecurity : SmtpSecurityMode.StartTls,
+            CredentialReference = smtp && keepSmtpCredential ? current.CredentialReference : null,
+            OAuthClientId = oauth && keepOAuthTokens ? current.OAuthClientId : null,
+            OAuthTenant = oauth && keepOAuthTokens ? current.OAuthTenant : "common",
+            OAuthTokenReference = oauth && keepOAuthTokens ? current.OAuthTokenReference : null,
+            OAuthRegistrationId = oauth && keepOAuthTokens ? current.OAuthRegistrationId : null,
+            IncludeAccountLabel = IncludeAccountLabel,
+        };
+    }
 
     private void Validate()
     {
-        if (Provider is EmailProviderMode.Disabled)
+        if (Provider is EmailProviderMode.Off)
         {
             ValidationMessage = null;
         }
+        else if (IsOAuthProvider)
+        {
+            ValidationMessage = MailAddress.TryCreate(_connectedAddress, out _)
+                ? null
+                : "Connect the selected email account before enabling notifications.";
+        }
         else if (!MailAddress.TryCreate(SenderAddress, out _))
         {
-            ValidationMessage = "Enter a valid sender email address.";
+            ValidationMessage = "Enter the email address that owns this SMTP account.";
         }
-        else if (ParseRecipients(RecipientAddress).Count == 0)
-        {
-            ValidationMessage = "Enter at least one valid recipient email address.";
-        }
-        else if (ParseRecipients(RecipientAddress).Any(address => !MailAddress.TryCreate(address, out _)))
-        {
-            ValidationMessage = "One or more recipient email addresses are invalid.";
-        }
-        else if (IsGenericSmtp && string.IsNullOrWhiteSpace(SmtpHost))
+        else if (string.IsNullOrWhiteSpace(SmtpHost))
         {
             ValidationMessage = "Enter the SMTP server host.";
         }
-        else if (IsOAuthProvider && string.IsNullOrWhiteSpace(OAuthClientId))
+        else if (SmtpSecurity is SmtpSecurityMode.None)
         {
-            ValidationMessage = "Enter the provider OAuth client ID before connecting.";
+            ValidationMessage = "Encrypted SMTP transport is required.";
+        }
+        else if (IsProtonBridge && SmtpHost is not ("127.0.0.1" or "::1" or "localhost"))
+        {
+            ValidationMessage = "Proton Mail Bridge must use the local loopback service.";
+        }
+        else if (IsProtonBridge && string.IsNullOrWhiteSpace(SmtpUsername))
+        {
+            ValidationMessage = "Enter the username generated by Proton Mail Bridge.";
         }
         else
         {
             ValidationMessage = null;
         }
+
         OnPropertyChanged(nameof(CanChangeOAuthConnection));
     }
 
-    internal static IReadOnlyList<string> ParseRecipients(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? []
-            : value.Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+    private void RaiseProviderProperties()
+    {
+        OnPropertyChanged(nameof(IsOtherSmtp));
+        OnPropertyChanged(nameof(IsProtonBridge));
+        OnPropertyChanged(nameof(IsSmtpProvider));
+        OnPropertyChanged(nameof(IsOAuthProvider));
+        OnPropertyChanged(nameof(IsMicrosoftOAuth));
+        OnPropertyChanged(nameof(ShowOAuthConnect));
+        OnPropertyChanged(nameof(ShowOAuthConnected));
+        OnPropertyChanged(nameof(OAuthConnectButtonText));
+        OnPropertyChanged(nameof(CanChangeOAuthConnection));
+        OnPropertyChanged(nameof(CanDisconnectOAuth));
+    }
 
     internal static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

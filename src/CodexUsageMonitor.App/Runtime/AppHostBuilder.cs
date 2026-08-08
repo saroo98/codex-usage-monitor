@@ -110,11 +110,15 @@ public static class AppHostBuilder
         services.AddSingleton<ISecretStore, WindowsCredentialSecretStore>();
         services.AddSingleton<IProtectedDataStore, DpapiProtectedDataStore>();
         services.AddSingleton<OAuthTokenStore>();
+        services.AddSingleton<ObsoleteEmailCredentialCleanup>();
         services.AddSingleton<IBrowserLauncher, SystemBrowserLauncher>();
-        services.AddSingleton<MicrosoftDeviceCodeFlow>();
-        services.AddSingleton<IMicrosoftDeviceCodeFlow>(provider => provider.GetRequiredService<MicrosoftDeviceCodeFlow>());
+        services.AddSingleton(options.EmailProviderRegistrations ?? EmailProviderRegistrations.FromAssembly(typeof(AppHostBuilder).Assembly));
+        services.AddSingleton<MicrosoftPkceAuthorizationFlow>();
+        services.AddSingleton<IMicrosoftPkceAuthorizationFlow>(provider => provider.GetRequiredService<MicrosoftPkceAuthorizationFlow>());
         services.AddSingleton<GooglePkceAuthorizationFlow>();
         services.AddSingleton<IGooglePkceAuthorizationFlow>(provider => provider.GetRequiredService<GooglePkceAuthorizationFlow>());
+        services.AddSingleton<ProviderEmailAccountIdentityResolver>();
+        services.AddSingleton<IProviderEmailAccountIdentityResolver>(provider => provider.GetRequiredService<ProviderEmailAccountIdentityResolver>());
         services.AddSingleton(provider => CreateHttpClient(options.HttpMessageHandler));
 
         services.AddSingleton<IProtocolAnomalySink, LoggingProtocolAnomalySink>();

@@ -40,11 +40,27 @@ public sealed class EmailTransportFactory : IDisposable
         _settings.Changed += OnSettingsChanged;
     }
 
-    public IEmailTransport? Resolve(EmailOutboxItem item)
+    public ISelfNotificationSender? Resolve(EmailOutboxItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
         ObjectDisposedException.ThrowIf(_disposed, this);
         var email = _settings.Current.Email;
+        if (!email.Enabled)
+        {
+            return null;
+        }
+
+        return Resolve(email);
+    }
+
+    public ISelfNotificationSender? ResolveForExplicitTest()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return Resolve(_settings.Current.Email);
+    }
+
+    private ISelfNotificationSender? Resolve(EmailSettings email)
+    {
         var fingerprint = Fingerprint(email);
         if (fingerprint is null)
         {
@@ -66,59 +82,81 @@ public sealed class EmailTransportFactory : IDisposable
 
     private CacheEntry? Build(EmailSettings email, string fingerprint)
     {
-        var sender = email.SenderAddress!.Trim();
+        var sender = (email.ConnectedAddress ?? email.SenderAddress)!.Trim();
+        var account = EmailAccountIdentity.Create(sender);
         return email.Provider switch
         {
-            EmailProviderMode.GenericSmtp => BuildPasswordTransport(email, sender, fingerprint),
-            EmailProviderMode.MicrosoftOAuth => BuildOAuthTransport(
+            EmailProviderMode.OtherSmtp => BuildPasswordTransport(email, account, fingerprint, protonBridge: false),
+            EmailProviderMode.ProtonMailBridge => BuildPasswordTransport(email, account, fingerprint, protonBridge: true),
+            EmailProviderMode.Microsoft365 => BuildMicrosoftGraphTransport(
                 email,
-                sender,
+                account,
                 fingerprint,
-                "smtp.office365.com",
-                587,
                 new Uri($"https://login.microsoftonline.com/{Uri.EscapeDataString(email.OAuthTenant ?? "common")}/oauth2/v2.0/token"),
-                MicrosoftDeviceCodeFlow.SmtpScopes),
-            EmailProviderMode.GoogleOAuth => BuildOAuthTransport(
+                MicrosoftPkceAuthorizationFlow.GraphScopes),
+            EmailProviderMode.Gmail => BuildGmailApiTransport(
                 email,
-                sender,
+                account,
                 fingerprint,
-                "smtp.gmail.com",
-                587,
                 new Uri("https://oauth2.googleapis.com/token"),
-                GooglePkceAuthorizationFlow.SmtpScopes),
+                GooglePkceAuthorizationFlow.GmailApiScopes),
             _ => null,
         };
     }
 
-    private CacheEntry? BuildPasswordTransport(EmailSettings email, string sender, string fingerprint)
+    private CacheEntry? BuildPasswordTransport(
+        EmailSettings email,
+        EmailAccountIdentity account,
+        string fingerprint,
+        bool protonBridge)
     {
         if (string.IsNullOrWhiteSpace(email.SmtpHost))
         {
             return null;
         }
 
+        var security = email.SmtpSecurity switch
+        {
+            SmtpSecurityMode.Tls => SmtpTransportSecurity.Tls,
+            SmtpSecurityMode.StartTls or SmtpSecurityMode.Auto => SmtpTransportSecurity.StartTls,
+            _ => SmtpTransportSecurity.None,
+        };
+        if (security is SmtpTransportSecurity.None)
+        {
+            return null;
+        }
+
         var reference = string.IsNullOrWhiteSpace(email.CredentialReference)
-            ? EmailSecretKeyFactory.SmtpPassword(sender)
+            ? EmailSecretKeyFactory.SmtpPassword(account.Address)
             : email.CredentialReference;
-        var connection = new SmtpConnectionSettings(
-            email.SmtpHost.Trim(),
-            Math.Clamp(email.SmtpPort, 1, 65535),
-            email.SmtpSecurity is not SmtpSecurityMode.None,
-            string.IsNullOrWhiteSpace(email.SmtpUsername) ? sender : email.SmtpUsername.Trim(),
-            reference,
-            UseOAuth2: false);
+        var userName = string.IsNullOrWhiteSpace(email.SmtpUsername) ? account.Address : email.SmtpUsername.Trim();
+        var connection = protonBridge
+            ? SmtpConnectionSettings.ForProtonBridge(
+                email.SmtpHost.Trim(),
+                Math.Clamp(email.SmtpPort, 1, 65535),
+                security,
+                userName,
+                reference)
+            : new SmtpConnectionSettings(
+                email.SmtpHost.Trim(),
+                Math.Clamp(email.SmtpPort, 1, 65535),
+                UseTls: true,
+                userName,
+                reference,
+                UseOAuth2: false)
+            {
+                Security = security,
+            };
         return new CacheEntry(
             fingerprint,
-            new SmtpEmailTransport(connection, _secrets, null, _loggerFactory.CreateLogger<SmtpEmailTransport>()),
+            new SmtpEmailTransport(connection, account, _secrets, null, _loggerFactory.CreateLogger<SmtpEmailTransport>()),
             null);
     }
 
-    private CacheEntry? BuildOAuthTransport(
+    private CacheEntry? BuildGmailApiTransport(
         EmailSettings email,
-        string sender,
+        EmailAccountIdentity account,
         string fingerprint,
-        string smtpHost,
-        int smtpPort,
         Uri tokenEndpoint,
         IReadOnlyList<string> scopes)
     {
@@ -128,36 +166,57 @@ public sealed class EmailTransportFactory : IDisposable
         }
 
         var tokenKey = string.IsNullOrWhiteSpace(email.OAuthTokenReference)
-            ? EmailSecretKeyFactory.OAuthTokens(email.Provider, sender, email.OAuthRegistrationId ?? email.OAuthClientId)
+            ? EmailSecretKeyFactory.OAuthTokens(email.Provider, account.Address, email.OAuthRegistrationId ?? email.OAuthClientId)
             : email.OAuthTokenReference;
         var provider = new RefreshingAccessTokenProvider(
             _httpClient,
             _tokens,
             new OAuthRefreshConfiguration(tokenEndpoint, email.OAuthClientId.Trim(), null, tokenKey, scopes),
             _clock);
-        var connection = new SmtpConnectionSettings(
-            smtpHost,
-            smtpPort,
-            UseTls: true,
-            sender,
-            tokenKey,
-            UseOAuth2: true);
         return new CacheEntry(
             fingerprint,
-            new SmtpEmailTransport(connection, _secrets, provider, _loggerFactory.CreateLogger<SmtpEmailTransport>()),
+            new GmailApiSelfNotificationTransport(_httpClient, provider, account),
+            provider);
+    }
+
+    private CacheEntry? BuildMicrosoftGraphTransport(
+        EmailSettings email,
+        EmailAccountIdentity account,
+        string fingerprint,
+        Uri tokenEndpoint,
+        IReadOnlyList<string> scopes)
+    {
+        if (string.IsNullOrWhiteSpace(email.OAuthClientId))
+        {
+            return null;
+        }
+
+        var tokenKey = string.IsNullOrWhiteSpace(email.OAuthTokenReference)
+            ? EmailSecretKeyFactory.OAuthTokens(email.Provider, account.Address, email.OAuthRegistrationId ?? email.OAuthClientId)
+            : email.OAuthTokenReference;
+        var provider = new RefreshingAccessTokenProvider(
+            _httpClient,
+            _tokens,
+            new OAuthRefreshConfiguration(tokenEndpoint, email.OAuthClientId.Trim(), null, tokenKey, scopes),
+            _clock);
+        return new CacheEntry(
+            fingerprint,
+            new MicrosoftGraphSelfNotificationTransport(_httpClient, provider, account),
             provider);
     }
 
     private static string? Fingerprint(EmailSettings email)
     {
-        if (email.Provider is EmailProviderMode.Disabled || string.IsNullOrWhiteSpace(email.SenderAddress))
+        if (email.Provider is EmailProviderMode.Off || string.IsNullOrWhiteSpace(email.ConnectedAddress ?? email.SenderAddress))
         {
             return null;
         }
 
         return string.Join('|',
             email.Provider,
-            email.SenderAddress.Trim().ToUpperInvariant(),
+            email.Enabled,
+            email.ConnectedAddress?.Trim().ToUpperInvariant(),
+            email.SenderAddress?.Trim().ToUpperInvariant(),
             email.SmtpHost?.Trim().ToUpperInvariant(),
             email.SmtpPort,
             email.SmtpSecurity is not SmtpSecurityMode.None,
@@ -193,7 +252,7 @@ public sealed class EmailTransportFactory : IDisposable
         }
     }
 
-    private sealed record CacheEntry(string Fingerprint, IEmailTransport Transport, IDisposable? Lifetime) : IDisposable
+    private sealed record CacheEntry(string Fingerprint, ISelfNotificationSender Transport, IDisposable? Lifetime) : IDisposable
     {
         public void Dispose() => Lifetime?.Dispose();
     }

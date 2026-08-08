@@ -35,13 +35,16 @@ public sealed class SettingsMigrationTests
         var result = SettingsValidation.Normalize(migration.Settings, migration.CanPersist, migration.SourceSchemaVersion);
 
         Assert.IsTrue(migration.Migrated);
+        Assert.AreEqual(1, migration.SourceSchemaVersion);
         Assert.IsTrue(result.CanPersist);
-        Assert.AreEqual(2, result.Settings.SchemaVersion);
+        Assert.AreEqual(3, result.Settings.SchemaVersion);
         Assert.AreEqual(0.42, result.Settings.Widget.Opacity, 0.001);
         Assert.AreEqual(ResetTimeDisplayMode.Hidden, result.Settings.Widget.ResetTimeDisplay);
         Assert.IsFalse(result.Settings.Widget.Topmost);
         Assert.AreEqual("sender@example.com", result.Settings.Email.SmtpUsername);
-        CollectionAssert.AreEqual(new[] { "receiver@example.com" }, result.Settings.Email.Recipients.ToArray());
+        Assert.AreEqual(EmailProviderMode.OtherSmtp, result.Settings.Email.Provider);
+        Assert.IsFalse(result.Settings.Email.Enabled);
+        Assert.AreEqual(0, result.Settings.Email.Recipients.Count);
         Assert.AreEqual(SmtpSecurityMode.StartTls, result.Settings.Email.SmtpSecurity);
         Assert.AreEqual("secret-ref", result.Settings.Email.CredentialReference);
         Assert.AreEqual(30, result.Settings.History.RetentionDays);
@@ -59,7 +62,7 @@ public sealed class SettingsMigrationTests
     }
 
     [TestMethod]
-    public void NormalizesRecipientsAndPreservesOpacityFloor()
+    public void RemovesLegacyRecipientsAndPreservesOpacityFloor()
     {
         var settings = new AppSettings
         {
@@ -76,7 +79,7 @@ public sealed class SettingsMigrationTests
         var result = SettingsValidation.Normalize(settings);
 
         Assert.AreEqual(0.35, result.Settings.Widget.Opacity, 0.001);
-        CollectionAssert.AreEqual(new[] { "A@example.com", "b@example.com" }, result.Settings.Email.Recipients.ToArray());
+        Assert.AreEqual(0, result.Settings.Email.Recipients.Count);
     }
 
     [TestMethod]

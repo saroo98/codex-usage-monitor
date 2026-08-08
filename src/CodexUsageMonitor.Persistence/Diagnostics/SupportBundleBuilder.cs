@@ -117,11 +117,11 @@ public sealed class SupportBundleBuilder
         email = new
         {
             settings.Email.Provider,
-            senderConfigured = !string.IsNullOrWhiteSpace(settings.Email.SenderAddress),
-            recipientCount = settings.Email.Recipients.Count,
+            settings.Email.Enabled,
+            accountConfigured = !string.IsNullOrWhiteSpace(settings.Email.ConnectedAddress ?? settings.Email.SenderAddress),
             smtpConfigured = !string.IsNullOrWhiteSpace(settings.Email.SmtpHost),
             credentialConfigured = !string.IsNullOrWhiteSpace(settings.Email.CredentialReference),
-            oauthClientConfigured = !string.IsNullOrWhiteSpace(settings.Email.OAuthClientId),
+            oauthConfigured = !string.IsNullOrWhiteSpace(settings.Email.OAuthTokenReference),
         },
         settings.History,
         settings.Updates,

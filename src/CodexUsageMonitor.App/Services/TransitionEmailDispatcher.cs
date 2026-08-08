@@ -34,9 +34,9 @@ public sealed class TransitionEmailDispatcher : IUsageEmailSink
         get
         {
             var email = _settings.Current.Email;
-            return email.Provider is not EmailProviderMode.Disabled
-                && !string.IsNullOrWhiteSpace(email.SenderAddress)
-                && email.Recipients.Count > 0;
+            return email.Enabled
+                && email.Provider is not EmailProviderMode.Off
+                && !string.IsNullOrWhiteSpace(email.ConnectedAddress ?? email.SenderAddress);
         }
     }
 
@@ -49,9 +49,9 @@ public sealed class TransitionEmailDispatcher : IUsageEmailSink
         ArgumentNullException.ThrowIfNull(snapshot);
         var settings = _settings.Current;
         var email = settings.Email;
-        if (email.Provider is EmailProviderMode.Disabled
-            || string.IsNullOrWhiteSpace(email.SenderAddress)
-            || email.Recipients.Count == 0)
+        if (!email.Enabled
+            || email.Provider is EmailProviderMode.Off
+            || string.IsNullOrWhiteSpace(email.ConnectedAddress ?? email.SenderAddress))
         {
             return false;
         }
@@ -85,8 +85,6 @@ public sealed class TransitionEmailDispatcher : IUsageEmailSink
             : snapshot.Account.DisplayName ?? snapshot.Account.Email ?? snapshot.Account.SafeLabel;
         var message = UsageEmailTemplate.Create(
             transition,
-            email.SenderAddress,
-            email.Recipients,
             email.IncludeAccountLabel,
             accountLabel);
         var queued = await _outbox.EnqueueAsync(

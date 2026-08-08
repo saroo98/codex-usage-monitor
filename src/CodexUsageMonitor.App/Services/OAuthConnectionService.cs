@@ -1,8 +1,9 @@
 using System.ComponentModel;
-using System.Net.Mail;
+using System.Reflection;
 using System.Security.Cryptography;
 using CodexUsageMonitor.Core.Security;
 using CodexUsageMonitor.Core.Settings;
+using CodexUsageMonitor.Email.Models;
 using CodexUsageMonitor.Email.OAuth;
 using CodexUsageMonitor.Email.Security;
 using Microsoft.Extensions.Logging;
@@ -17,54 +18,84 @@ public enum OAuthConnectionState
     Unavailable,
 }
 
-public sealed record OAuthConnectionStatus(OAuthConnectionState State, string SafeMessageCode)
+public sealed record OAuthConnectionStatus(
+    OAuthConnectionState State,
+    string SafeMessageCode,
+    string? ConnectedAddress = null)
 {
     public bool IsConnected => State is OAuthConnectionState.Connected or OAuthConnectionState.ConnectedWithCleanupWarning;
-
     public static OAuthConnectionStatus NotConnected { get; } = new(OAuthConnectionState.NotConnected, "email.oauth_not_connected");
-
-    public static OAuthConnectionStatus Connected { get; } = new(OAuthConnectionState.Connected, "email.oauth_connected");
 }
 
+public sealed record EmailProviderRegistrations(
+    string? GoogleClientId,
+    string? MicrosoftClientId,
+    string MicrosoftTenant = "common")
+{
+    public bool GoogleAvailable => !string.IsNullOrWhiteSpace(GoogleClientId);
+    public bool MicrosoftAvailable => !string.IsNullOrWhiteSpace(MicrosoftClientId);
 
-public sealed record MicrosoftOAuthPrompt(
-    string UserCode,
-    Uri VerificationUri,
-    string? ProviderMessage,
-    DateTimeOffset ExpiresAtUtc);
+    public static EmailProviderRegistrations FromAssembly(Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        var metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .ToDictionary(static item => item.Key, static item => item.Value, StringComparer.Ordinal);
+        return new EmailProviderRegistrations(
+            Read("GoogleOAuthClientId"),
+            Read("MicrosoftOAuthClientId"),
+            Read("MicrosoftOAuthTenant") ?? "common");
+
+        string? Read(string key) => metadata.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
+            ? value.Trim()
+            : null;
+    }
+}
 
 public sealed class OAuthConnectionService
 {
-    private static readonly TimeSpan GoogleAuthorizationTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan AuthorizationTimeout = TimeSpan.FromMinutes(5);
+    private static readonly Uri GoogleRevokeEndpoint = new("https://oauth2.googleapis.com/revoke");
     private readonly ApplicationSettingsService _settings;
     private readonly ISecretStore _secrets;
-    private readonly IMicrosoftDeviceCodeFlow _microsoft;
+    private readonly OAuthTokenStore _tokens;
+    private readonly EmailProviderRegistrations _registrations;
+    private readonly IMicrosoftPkceAuthorizationFlow _microsoft;
     private readonly IGooglePkceAuthorizationFlow _google;
-    private readonly IBrowserLauncher _browser;
+    private readonly IProviderEmailAccountIdentityResolver _identities;
+    private readonly HttpClient _httpClient;
     private readonly ILogger<OAuthConnectionService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public OAuthConnectionService(
         ApplicationSettingsService settings,
         ISecretStore secrets,
-        IMicrosoftDeviceCodeFlow microsoft,
+        OAuthTokenStore tokens,
+        EmailProviderRegistrations registrations,
+        IMicrosoftPkceAuthorizationFlow microsoft,
         IGooglePkceAuthorizationFlow google,
-        IBrowserLauncher browser,
+        IProviderEmailAccountIdentityResolver identities,
+        HttpClient httpClient,
         ILogger<OAuthConnectionService> logger)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _secrets = secrets ?? throw new ArgumentNullException(nameof(secrets));
+        _tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
+        _registrations = registrations ?? throw new ArgumentNullException(nameof(registrations));
         _microsoft = microsoft ?? throw new ArgumentNullException(nameof(microsoft));
         _google = google ?? throw new ArgumentNullException(nameof(google));
-        _browser = browser ?? throw new ArgumentNullException(nameof(browser));
+        _identities = identities ?? throw new ArgumentNullException(nameof(identities));
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+
+    public EmailProviderRegistrations Registrations => _registrations;
 
     public async Task<OAuthConnectionStatus> GetStatusAsync(CancellationToken cancellationToken)
     {
         var email = _settings.Current.Email;
-        var reference = ResolveTokenReference(email);
-        if (reference is null)
+        if (email.Provider is not (EmailProviderMode.Gmail or EmailProviderMode.Microsoft365) ||
+            string.IsNullOrWhiteSpace(email.ConnectedAddress) ||
+            string.IsNullOrWhiteSpace(email.OAuthTokenReference))
         {
             return OAuthConnectionStatus.NotConnected;
         }
@@ -72,8 +103,10 @@ public sealed class OAuthConnectionService
         byte[]? payload = null;
         try
         {
-            payload = await _secrets.GetAsync(reference, cancellationToken).ConfigureAwait(false);
-            return payload is { Length: > 0 } ? OAuthConnectionStatus.Connected : OAuthConnectionStatus.NotConnected;
+            payload = await _secrets.GetAsync(email.OAuthTokenReference, cancellationToken).ConfigureAwait(false);
+            return payload is { Length: > 0 }
+                ? new OAuthConnectionStatus(OAuthConnectionState.Connected, "email.oauth_connected", email.ConnectedAddress)
+                : OAuthConnectionStatus.NotConnected;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or Win32Exception)
         {
@@ -82,73 +115,52 @@ public sealed class OAuthConnectionService
         }
         finally
         {
-            if (payload is not null)
-            {
-                CryptographicOperations.ZeroMemory(payload);
-            }
+            if (payload is not null) CryptographicOperations.ZeroMemory(payload);
         }
     }
 
-    public async Task<OAuthConnectionStatus> ConnectMicrosoftAsync(
-        string senderAddress,
-        string clientId,
-        string? tenant,
-        Func<MicrosoftOAuthPrompt, CancellationToken, Task> presentChallenge,
-        CancellationToken cancellationToken)
+    public Task<OAuthConnectionStatus> ConnectGoogleAsync(CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(presentChallenge);
-        var normalizedTenant = string.IsNullOrWhiteSpace(tenant) ? "common" : tenant.Trim();
-        return await ConnectAsync(
-            EmailProviderMode.MicrosoftOAuth,
-            senderAddress,
-            clientId,
-            normalizedTenant,
-            async (tokenReference, token) =>
-            {
-                var challenge = await _microsoft.BeginAsync(
-                    normalizedTenant,
-                    clientId.Trim(),
-                    MicrosoftDeviceCodeFlow.SmtpScopes,
-                    token).ConfigureAwait(false);
-                await presentChallenge(
-                    new MicrosoftOAuthPrompt(
-                        challenge.UserCode,
-                        challenge.VerificationUri,
-                        challenge.Message,
-                        challenge.ExpiresAtUtc),
-                    token).ConfigureAwait(false);
-                await _browser.OpenAsync(challenge.VerificationUri, token).ConfigureAwait(false);
-                await _microsoft.CompleteAsync(
-                    challenge,
-                    normalizedTenant,
-                    clientId.Trim(),
-                    tokenReference,
-                    MicrosoftDeviceCodeFlow.SmtpScopes,
-                    token).ConfigureAwait(false);
-            },
-            cancellationToken).ConfigureAwait(false);
+        if (!_registrations.GoogleAvailable)
+        {
+            return Task.FromResult(new OAuthConnectionStatus(OAuthConnectionState.Unavailable, "email.google_registration_unavailable"));
+        }
+
+        return ConnectAsync(
+            EmailProviderMode.Gmail,
+            _registrations.GoogleClientId!,
+            tenant: null,
+            async (temporaryReference, token) => await _google.ConnectAsync(
+                _registrations.GoogleClientId!,
+                temporaryReference,
+                GooglePkceAuthorizationFlow.GmailApiScopes,
+                AuthorizationTimeout,
+                token).ConfigureAwait(false),
+            (access, token) => _identities.ResolveGoogleAsync(access, token),
+            cancellationToken);
     }
 
-    public Task<OAuthConnectionStatus> ConnectGoogleAsync(
-        string senderAddress,
-        string clientId,
-        CancellationToken cancellationToken) =>
-        ConnectAsync(
-            EmailProviderMode.GoogleOAuth,
-            senderAddress,
-            clientId,
-            tenant: null,
-            async (tokenReference, token) =>
-            {
-                await _google.ConnectAsync(
-                    clientId.Trim(),
-                    clientSecret: null,
-                    tokenReference,
-                    GooglePkceAuthorizationFlow.SmtpScopes,
-                    GoogleAuthorizationTimeout,
-                    token).ConfigureAwait(false);
-            },
+    public Task<OAuthConnectionStatus> ConnectMicrosoftAsync(CancellationToken cancellationToken)
+    {
+        if (!_registrations.MicrosoftAvailable)
+        {
+            return Task.FromResult(new OAuthConnectionStatus(OAuthConnectionState.Unavailable, "email.microsoft_registration_unavailable"));
+        }
+
+        var tenant = string.IsNullOrWhiteSpace(_registrations.MicrosoftTenant) ? "common" : _registrations.MicrosoftTenant.Trim();
+        return ConnectAsync(
+            EmailProviderMode.Microsoft365,
+            _registrations.MicrosoftClientId!,
+            tenant,
+            (_, token) => _microsoft.ConnectAsync(
+                tenant,
+                _registrations.MicrosoftClientId!,
+                MicrosoftPkceAuthorizationFlow.GraphScopes,
+                AuthorizationTimeout,
+                token),
+            (access, token) => _identities.ResolveMicrosoftAsync(access, token),
             cancellationToken);
+    }
 
     public async Task<OAuthConnectionStatus> DisconnectAsync(CancellationToken cancellationToken)
     {
@@ -156,15 +168,17 @@ public sealed class OAuthConnectionService
         try
         {
             var before = _settings.Current.Email;
-            var reference = ResolveTokenReference(before);
-            if (reference is null)
+            if (string.IsNullOrWhiteSpace(before.OAuthTokenReference))
             {
                 return OAuthConnectionStatus.NotConnected;
             }
 
-            var previousPayload = await _secrets.GetAsync(reference, cancellationToken).ConfigureAwait(false);
+            var reference = before.OAuthTokenReference.Trim();
+            var priorPayload = await _secrets.GetAsync(reference, cancellationToken).ConfigureAwait(false);
+            OAuthTokenSet? priorTokens = null;
             try
             {
+                priorTokens = await _tokens.ReadAsync(reference, cancellationToken).ConfigureAwait(false);
                 await _secrets.DeleteAsync(reference, cancellationToken).ConfigureAwait(false);
                 try
                 {
@@ -172,6 +186,10 @@ public sealed class OAuthConnectionService
                     {
                         Email = settings.Email with
                         {
+                            Enabled = false,
+                            ConnectedAddress = null,
+                            OAuthClientId = null,
+                            OAuthTenant = "common",
                             OAuthTokenReference = null,
                             OAuthRegistrationId = null,
                         },
@@ -179,9 +197,9 @@ public sealed class OAuthConnectionService
                 }
                 catch
                 {
-                    if (previousPayload is { Length: > 0 })
+                    if (priorPayload is { Length: > 0 })
                     {
-                        await _secrets.SetAsync(reference, previousPayload, cancellationToken).ConfigureAwait(false);
+                        await _secrets.SetAsync(reference, priorPayload, cancellationToken).ConfigureAwait(false);
                     }
 
                     throw;
@@ -189,13 +207,14 @@ public sealed class OAuthConnectionService
             }
             finally
             {
-                if (previousPayload is not null)
-                {
-                    CryptographicOperations.ZeroMemory(previousPayload);
-                }
+                if (priorPayload is not null) CryptographicOperations.ZeroMemory(priorPayload);
             }
 
-            return OAuthConnectionStatus.NotConnected;
+            var cleanupWarning = before.Provider is EmailProviderMode.Gmail && priorTokens is not null &&
+                !await TryRevokeGoogleAsync(priorTokens, cancellationToken).ConfigureAwait(false);
+            return cleanupWarning
+                ? new OAuthConnectionStatus(OAuthConnectionState.ConnectedWithCleanupWarning, "email.oauth_disconnected_revoke_pending")
+                : OAuthConnectionStatus.NotConnected;
         }
         finally
         {
@@ -203,90 +222,87 @@ public sealed class OAuthConnectionService
         }
     }
 
-    public async Task DeleteReferenceAsync(string? reference, CancellationToken cancellationToken)
-    {
-        if (!string.IsNullOrWhiteSpace(reference))
-        {
-            await _secrets.DeleteAsync(reference.Trim(), cancellationToken).ConfigureAwait(false);
-        }
-    }
+    public Task DeleteReferenceAsync(string? reference, CancellationToken cancellationToken) =>
+        string.IsNullOrWhiteSpace(reference)
+            ? Task.CompletedTask
+            : _secrets.DeleteAsync(reference.Trim(), cancellationToken);
 
     private async Task<OAuthConnectionStatus> ConnectAsync(
         EmailProviderMode provider,
-        string senderAddress,
         string clientId,
         string? tenant,
-        Func<string, CancellationToken, Task> authorize,
+        Func<string, CancellationToken, Task<OAuthTokenSet>> authorize,
+        Func<OAuthAccessToken, CancellationToken, Task<EmailAccountIdentity>> resolveIdentity,
         CancellationToken cancellationToken)
     {
-        var normalizedSender = NormalizeSender(senderAddress);
-        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
-        var normalizedClientId = clientId.Trim();
-        if (normalizedClientId.Length > 256)
-        {
-            throw new ArgumentOutOfRangeException(nameof(clientId));
-        }
-
-        var registrationId = EmailSecretKeyFactory.OAuthRegistrationId(provider, normalizedClientId);
-        var newReference = EmailSecretKeyFactory.OAuthTokens(provider, normalizedSender, registrationId);
+        var temporaryReference = $"CodexUsageMonitor.Email.oauth-temporary.{Guid.NewGuid():N}";
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var before = _settings.Current.Email;
-            var priorAtNewReference = await _secrets.GetAsync(newReference, cancellationToken).ConfigureAwait(false);
+            OAuthTokenSet tokens;
             try
             {
-                await authorize(newReference, cancellationToken).ConfigureAwait(false);
+                tokens = await authorize(temporaryReference, cancellationToken).ConfigureAwait(false);
+                var account = await resolveIdentity(
+                    new OAuthAccessToken(tokens.AccessToken, tokens.ExpiresAtUtc),
+                    cancellationToken).ConfigureAwait(false);
+                var registrationId = EmailSecretKeyFactory.OAuthRegistrationId(provider, clientId);
+                var stableReference = EmailSecretKeyFactory.OAuthTokens(provider, account.Address, registrationId);
+                var priorAtStableReference = await _secrets.GetAsync(stableReference, cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    await _settings.UpdateAsync(settings => settings with
+                    await _tokens.SaveAsync(stableReference, tokens, cancellationToken).ConfigureAwait(false);
+                    try
                     {
-                        Email = settings.Email with
+                        await _settings.UpdateAsync(settings => settings with
                         {
-                            Provider = provider,
-                            SenderAddress = normalizedSender,
-                            OAuthClientId = normalizedClientId,
-                            OAuthTenant = provider is EmailProviderMode.MicrosoftOAuth ? tenant : settings.Email.OAuthTenant,
-                            OAuthTokenReference = newReference,
-                            OAuthRegistrationId = registrationId,
-                            CredentialReference = null,
-                        },
-                    }, cancellationToken).ConfigureAwait(false);
+                            Email = settings.Email with
+                            {
+                                Provider = provider,
+                                Enabled = false,
+                                ConnectedAddress = account.Address,
+                                SenderAddress = null,
+                                Recipients = [],
+                                OAuthClientId = clientId.Trim(),
+                                OAuthTenant = provider is EmailProviderMode.Microsoft365 ? tenant : "common",
+                                OAuthTokenReference = stableReference,
+                                OAuthRegistrationId = registrationId,
+                                CredentialReference = null,
+                            },
+                        }, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        await RestoreSecretAsync(stableReference, priorAtStableReference, cancellationToken).ConfigureAwait(false);
+                        throw;
+                    }
                 }
-                catch
+                finally
                 {
-                    await RestoreSecretAsync(newReference, priorAtNewReference, cancellationToken).ConfigureAwait(false);
-                    throw;
+                    if (priorAtStableReference is not null) CryptographicOperations.ZeroMemory(priorAtStableReference);
                 }
+
+                var cleanupWarning = await DeleteObsoleteReferencesAsync(
+                    [before.OAuthTokenReference, before.CredentialReference, temporaryReference],
+                    stableReference,
+                    cancellationToken).ConfigureAwait(false);
+                return new OAuthConnectionStatus(
+                    cleanupWarning ? OAuthConnectionState.ConnectedWithCleanupWarning : OAuthConnectionState.Connected,
+                    cleanupWarning ? "email.oauth_connected_cleanup_pending" : "email.oauth_connected",
+                    account.Address);
             }
             finally
             {
-                if (priorAtNewReference is not null)
-                {
-                    CryptographicOperations.ZeroMemory(priorAtNewReference);
-                }
-            }
-
-            var cleanupWarning = false;
-            foreach (var obsoleteReference in new[] { before.OAuthTokenReference, before.CredentialReference }
-                         .Where(reference => !string.IsNullOrWhiteSpace(reference) &&
-                             !string.Equals(reference, newReference, StringComparison.Ordinal))
-                         .Distinct(StringComparer.Ordinal))
-            {
                 try
                 {
-                    await _secrets.DeleteAsync(obsoleteReference!, cancellationToken).ConfigureAwait(false);
+                    await _secrets.DeleteAsync(temporaryReference, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or Win32Exception)
                 {
-                    cleanupWarning = true;
-                    _logger.LogWarning(exception, "An obsolete email credential reference could not be removed.");
+                    _logger.LogWarning(exception, "A temporary OAuth credential could not be removed.");
                 }
             }
-
-            return cleanupWarning
-                ? new OAuthConnectionStatus(OAuthConnectionState.ConnectedWithCleanupWarning, "email.oauth_connected_cleanup_pending")
-                : OAuthConnectionStatus.Connected;
         }
         finally
         {
@@ -294,42 +310,51 @@ public sealed class OAuthConnectionService
         }
     }
 
-    private static string? ResolveTokenReference(EmailSettings email)
-    {
-        if (!string.IsNullOrWhiteSpace(email.OAuthTokenReference))
-        {
-            return email.OAuthTokenReference.Trim();
-        }
-
-        if (email.Provider is not (EmailProviderMode.MicrosoftOAuth or EmailProviderMode.GoogleOAuth) ||
-            string.IsNullOrWhiteSpace(email.SenderAddress) ||
-            string.IsNullOrWhiteSpace(email.OAuthClientId))
-        {
-            return null;
-        }
-
-        var registrationId = email.OAuthRegistrationId ??
-            EmailSecretKeyFactory.OAuthRegistrationId(email.Provider, email.OAuthClientId);
-        return EmailSecretKeyFactory.OAuthTokens(email.Provider, email.SenderAddress, registrationId);
-    }
-
-    private static string NormalizeSender(string senderAddress)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(senderAddress);
-        var trimmed = senderAddress.Trim();
-        var parsed = new MailAddress(trimmed);
-        if (!string.Equals(parsed.Address, trimmed, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new FormatException("The sender email address is invalid.");
-        }
-
-        return parsed.Address;
-    }
-
-    private async Task RestoreSecretAsync(
-        string reference,
-        byte[]? priorSecret,
+    private async Task<bool> DeleteObsoleteReferencesAsync(
+        IEnumerable<string?> references,
+        string keepReference,
         CancellationToken cancellationToken)
+    {
+        var warning = false;
+        foreach (var reference in references.Where(static value => !string.IsNullOrWhiteSpace(value))
+                     .Select(static value => value!.Trim())
+                     .Where(value => !string.Equals(value, keepReference, StringComparison.Ordinal))
+                     .Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                await _secrets.DeleteAsync(reference, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or Win32Exception)
+            {
+                warning = true;
+                _logger.LogWarning(exception, "An obsolete email credential reference could not be removed.");
+            }
+        }
+
+        return warning;
+    }
+
+    private async Task<bool> TryRevokeGoogleAsync(OAuthTokenSet tokens, CancellationToken cancellationToken)
+    {
+        var token = tokens.RefreshToken ?? tokens.AccessToken;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, GoogleRevokeEndpoint)
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = token }),
+            };
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException or TaskCanceledException)
+        {
+            _logger.LogWarning(exception, "Google authorization could not be revoked remotely; local tokens were removed.");
+            return false;
+        }
+    }
+
+    private async Task RestoreSecretAsync(string reference, byte[]? priorSecret, CancellationToken cancellationToken)
     {
         if (priorSecret is { Length: > 0 })
         {

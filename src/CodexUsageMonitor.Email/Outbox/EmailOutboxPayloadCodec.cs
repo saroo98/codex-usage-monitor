@@ -18,7 +18,7 @@ public sealed class EmailOutboxPayloadCodec
         _protectedData = protectedData ?? throw new ArgumentNullException(nameof(protectedData));
     }
 
-    public string Encode(EmailMessage message)
+    public string Encode(SelfNotification message)
     {
         ArgumentNullException.ThrowIfNull(message);
         var plaintext = JsonSerializer.SerializeToUtf8Bytes(message, _jsonOptions);
@@ -46,7 +46,7 @@ public sealed class EmailOutboxPayloadCodec
         }
     }
 
-    public EmailMessage Decode(string encoded)
+    public SelfNotification Decode(string encoded)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(encoded);
         if (encoded.Length > MaximumPayloadBytes * 2)
@@ -74,7 +74,7 @@ public sealed class EmailOutboxPayloadCodec
                     throw new InvalidDataException("Email payload has an invalid size.");
                 }
 
-                return JsonSerializer.Deserialize<EmailMessage>(plaintext, _jsonOptions)
+                return JsonSerializer.Deserialize<SelfNotification>(plaintext, _jsonOptions)
                     ?? throw new InvalidDataException("Email payload is empty.");
             }
             finally

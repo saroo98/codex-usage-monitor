@@ -20,6 +20,7 @@ public sealed class ApplicationBootstrapper : IAsyncDisposable
     private readonly ILegacyTaskRetirementCoordinator _legacyTaskRetirement;
     private readonly LegacyMigrationRuntimeState _legacyMigrationState;
     private readonly ApplicationSettingsService _settings;
+    private readonly ObsoleteEmailCredentialCleanup _obsoleteEmailCredentials;
     private readonly ThemeManager _themes;
     private readonly INativeNotificationService _nativeNotifications;
     private readonly Func<NativeActivationCoordinator> _nativeActivationFactory;
@@ -49,6 +50,7 @@ public sealed class ApplicationBootstrapper : IAsyncDisposable
         ILegacyTaskRetirementCoordinator legacyTaskRetirement,
         LegacyMigrationRuntimeState legacyMigrationState,
         ApplicationSettingsService settings,
+        ObsoleteEmailCredentialCleanup obsoleteEmailCredentials,
         ThemeManager themes,
         INativeNotificationService nativeNotifications,
         Func<NativeActivationCoordinator> nativeActivationFactory,
@@ -70,6 +72,7 @@ public sealed class ApplicationBootstrapper : IAsyncDisposable
         _legacyTaskRetirement = legacyTaskRetirement ?? throw new ArgumentNullException(nameof(legacyTaskRetirement));
         _legacyMigrationState = legacyMigrationState ?? throw new ArgumentNullException(nameof(legacyMigrationState));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _obsoleteEmailCredentials = obsoleteEmailCredentials ?? throw new ArgumentNullException(nameof(obsoleteEmailCredentials));
         _themes = themes ?? throw new ArgumentNullException(nameof(themes));
         _nativeNotifications = nativeNotifications ?? throw new ArgumentNullException(nameof(nativeNotifications));
         _nativeActivationFactory = nativeActivationFactory ?? throw new ArgumentNullException(nameof(nativeActivationFactory));
@@ -113,6 +116,8 @@ public sealed class ApplicationBootstrapper : IAsyncDisposable
                 "settings",
                 settingsResult.Issues.Count > 0 ? settingsResult.Issues[0].Code : "settings.read_only");
         }
+
+        await _obsoleteEmailCredentials.RunAsync(cancellationToken).ConfigureAwait(false);
 
         _settings.Changed += OnSettingsChanged;
         _lifetime.RegisterExitPreparation(_updateInstallOnExit.PrepareExitAsync);

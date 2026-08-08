@@ -197,11 +197,14 @@ public sealed class SettingsViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(status);
         Email.OAuthConnected = status.IsConnected;
+        Email.SetConnectedAddress(status.ConnectedAddress);
         Email.OAuthConnectionStatus = status.SafeMessageCode switch
         {
-            "email.oauth_connected" => "Connected securely",
-            "email.oauth_connected_cleanup_pending" => "Connected; an obsolete credential could not yet be removed",
+            "email.oauth_connected" => status.ConnectedAddress is null ? "Connected securely" : $"Connected as {status.ConnectedAddress}",
+            "email.oauth_connected_cleanup_pending" => status.ConnectedAddress is null ? "Connected; cleanup pending" : $"Connected as {status.ConnectedAddress}; cleanup pending",
             "email.oauth_status_unavailable" => "Connection status unavailable",
+            "email.google_registration_unavailable" => "Google connection is unavailable in this build",
+            "email.microsoft_registration_unavailable" => "Microsoft connection is unavailable in this build",
             _ => "Not connected",
         };
     }
@@ -225,11 +228,12 @@ public sealed class SettingsViewModel : ObservableObject
             if (!Email.IsValid) throw new FormatException(Email.ValidationMessage);
             var normalizedSender = EmailSettingsSectionViewModel.Normalize(Email.SenderAddress);
             var sameSender = string.Equals(previousEmail.SenderAddress, normalizedSender, StringComparison.OrdinalIgnoreCase);
-            var keepSmtpCredential = Email.Provider is EmailProviderMode.GenericSmtp &&
-                previousEmail.Provider is EmailProviderMode.GenericSmtp && sameSender;
-            var keepOAuthTokens = Email.Provider is EmailProviderMode.MicrosoftOAuth or EmailProviderMode.GoogleOAuth &&
-                previousEmail.Provider == Email.Provider && sameSender &&
-                string.Equals(previousEmail.OAuthClientId, Email.OAuthClientId?.Trim(), StringComparison.Ordinal);
+            var keepSmtpCredential = Email.Provider is EmailProviderMode.OtherSmtp or EmailProviderMode.ProtonMailBridge &&
+                previousEmail.Provider == Email.Provider && sameSender;
+            var keepOAuthTokens = Email.Provider is EmailProviderMode.Microsoft365 or EmailProviderMode.Gmail &&
+                previousEmail.Provider == Email.Provider &&
+                !string.IsNullOrWhiteSpace(previousEmail.ConnectedAddress) &&
+                !string.IsNullOrWhiteSpace(previousEmail.OAuthTokenReference);
             var profiles = Accounts.BuildProfiles();
             await _settingsService.UpdateAsync(current => current with
             {

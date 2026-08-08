@@ -15,3 +15,7 @@ Useful reports include the affected version and architecture, Windows version, i
 ## Scope
 
 Relevant reports include credential exposure, unsafe update behavior, signature or release-provenance failures, account-data mixing, arbitrary code execution, privilege escalation, path traversal, and sensitive information written to logs or support bundles.
+
+## Email notification security
+
+Email delivery is self-only and uses a destination-free application API. Provider permissions, credential storage, recipient enforcement, message construction, transmission adapters, and exact audit files are documented in [EMAIL_SECURITY.md](EMAIL_SECURITY.md).

@@ -31,4 +31,9 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="GoogleOAuthClientId" Value="$(GoogleOAuthClientId)" Condition="'$(GoogleOAuthClientId)' != ''" />
+    <AssemblyMetadata Include="MicrosoftOAuthClientId" Value="$(MicrosoftOAuthClientId)" Condition="'$(MicrosoftOAuthClientId)' != ''" />
+    <AssemblyMetadata Include="MicrosoftOAuthTenant" Value="$(MicrosoftOAuthTenant)" Condition="'$(MicrosoftOAuthTenant)' != ''" />
+  </ItemGroup>
 </Project>

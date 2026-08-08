@@ -94,8 +94,20 @@ public sealed class EmailCredentialService
     public async Task<EmailCredentialStatus> StoreSmtpPasswordAsync(
         string senderAddress,
         SecureString password,
+        CancellationToken cancellationToken) =>
+        await StoreSmtpPasswordAsync(EmailProviderMode.OtherSmtp, senderAddress, password, cancellationToken).ConfigureAwait(false);
+
+    public async Task<EmailCredentialStatus> StoreSmtpPasswordAsync(
+        EmailProviderMode provider,
+        string senderAddress,
+        SecureString password,
         CancellationToken cancellationToken)
     {
+        if (provider is not (EmailProviderMode.OtherSmtp or EmailProviderMode.ProtonMailBridge))
+        {
+            throw new ArgumentOutOfRangeException(nameof(provider));
+        }
+
         var normalizedSender = NormalizeSender(senderAddress);
         ArgumentNullException.ThrowIfNull(password);
         if (password.Length is <= 0 or > MaximumPasswordCharacters)
@@ -120,7 +132,9 @@ public sealed class EmailCredentialService
                     {
                         Email = settings.Email with
                         {
-                            Provider = EmailProviderMode.GenericSmtp,
+                            Provider = provider,
+                            Enabled = false,
+                            ConnectedAddress = null,
                             SenderAddress = normalizedSender,
                             CredentialReference = newReference,
                             OAuthTokenReference = null,

@@ -24,7 +24,7 @@ public sealed class EmailOutboxQueue
     }
 
     public Task<bool> EnqueueAsync(
-        EmailMessage message,
+        SelfNotification message,
         Guid profileId,
         string accountKey,
         DateTimeOffset availableAtUtc,

@@ -4,6 +4,7 @@ using System.Text;
 using CodexUsageMonitor.Core.Security;
 using CodexUsageMonitor.Email.Models;
 using CodexUsageMonitor.Email.OAuth;
+using CodexUsageMonitor.Email.Security;
 using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -12,21 +13,24 @@ using MimeKit;
 
 namespace CodexUsageMonitor.Email.Transport;
 
-public sealed class SmtpEmailTransport : IEmailTransport
+public sealed class SmtpEmailTransport : ISelfNotificationSender
 {
     private const int MaximumMessageCharacters = 256 * 1024;
     private readonly SmtpConnectionSettings _settings;
+    private readonly EmailAccountIdentity _account;
     private readonly ISecretStore _secrets;
     private readonly IAccessTokenProvider? _accessTokens;
     private readonly ILogger<SmtpEmailTransport> _logger;
 
     public SmtpEmailTransport(
         SmtpConnectionSettings settings,
+        EmailAccountIdentity account,
         ISecretStore secrets,
         IAccessTokenProvider? accessTokens,
         ILogger<SmtpEmailTransport> logger)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _account = account ?? throw new ArgumentNullException(nameof(account));
         _secrets = secrets ?? throw new ArgumentNullException(nameof(secrets));
         _accessTokens = accessTokens;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -36,9 +40,10 @@ public sealed class SmtpEmailTransport : IEmailTransport
         }
     }
 
-    public async Task<EmailDeliveryResult> SendAsync(EmailMessage message, CancellationToken cancellationToken)
+    public async Task<EmailDeliveryResult> SendSelfNotificationAsync(SelfNotification notification, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(notification);
+        var message = SelfOnlyMessageFactory.Create(_account, notification);
         if (message.PlainTextBody.Length + (message.HtmlBody?.Length ?? 0) > MaximumMessageCharacters)
         {
             return EmailDeliveryResult.Permanent("email.message_too_large");
@@ -46,7 +51,7 @@ public sealed class SmtpEmailTransport : IEmailTransport
 
         try
         {
-            var mimeMessage = BuildMessage(message);
+            var mimeMessage = SelfOnlyMimeMessageBuilder.Build(message);
             using var client = new SmtpClient
             {
                 Timeout = 30_000,
@@ -119,33 +124,14 @@ public sealed class SmtpEmailTransport : IEmailTransport
         }
     }
 
-    private static MimeMessage BuildMessage(EmailMessage message)
-    {
-        var mimeMessage = new MimeMessage();
-        mimeMessage.From.Add(MailboxAddress.Parse(message.From));
-        foreach (var recipient in message.To)
-        {
-            mimeMessage.To.Add(MailboxAddress.Parse(recipient));
-        }
-        mimeMessage.Subject = message.Subject.Trim()[..Math.Min(message.Subject.Trim().Length, 160)];
-        mimeMessage.MessageId = MimeKit.Utils.MimeUtils.GenerateMessageId("codex-usage-monitor.local");
-        mimeMessage.Headers.Add("X-Codex-Usage-Monitor-Event", message.DeduplicationKey[..Math.Min(message.DeduplicationKey.Length, 200)]);
-        mimeMessage.Body = new BodyBuilder
-        {
-            TextBody = message.PlainTextBody,
-            HtmlBody = message.HtmlBody,
-        }.ToMessageBody();
-        return mimeMessage;
-    }
-
     private static SecureSocketOptions ResolveSocketOptions(SmtpConnectionSettings settings)
     {
-        if (!settings.UseTls)
+        return settings.Security switch
         {
-            return SecureSocketOptions.None;
-        }
-
-        return settings.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+            SmtpTransportSecurity.StartTls => SecureSocketOptions.StartTls,
+            SmtpTransportSecurity.Tls => SecureSocketOptions.SslOnConnect,
+            _ => throw new InvalidOperationException("Plaintext SMTP is not permitted."),
+        };
     }
 
     private static bool IsTransient(SmtpStatusCode statusCode)

@@ -13,7 +13,7 @@ public sealed class EmailOutboxProcessor
     private static readonly TimeSpan MaintenanceInterval = TimeSpan.FromMinutes(15);
     private readonly EmailOutboxRepository _repository;
     private readonly EmailOutboxPayloadCodec _codec;
-    private readonly Func<EmailOutboxItem, IEmailTransport?> _transportResolver;
+    private readonly Func<EmailOutboxItem, ISelfNotificationSender?> _transportResolver;
     private readonly IClock _clock;
     private readonly EmailOutboxSignal _signal;
     private readonly EmailRetryBackoffPolicy _retryPolicy;
@@ -22,7 +22,7 @@ public sealed class EmailOutboxProcessor
     public EmailOutboxProcessor(
         EmailOutboxRepository repository,
         EmailOutboxPayloadCodec codec,
-        Func<EmailOutboxItem, IEmailTransport?> transportResolver,
+        Func<EmailOutboxItem, ISelfNotificationSender?> transportResolver,
         IClock clock,
         EmailOutboxSignal signal,
         EmailRetryBackoffPolicy retryPolicy,
@@ -107,7 +107,7 @@ public sealed class EmailOutboxProcessor
             return true;
         }
 
-        EmailMessage message;
+        SelfNotification message;
         try
         {
             message = _codec.Decode(item.PayloadJson);
@@ -119,7 +119,7 @@ public sealed class EmailOutboxProcessor
             return true;
         }
 
-        IEmailTransport? transport;
+        ISelfNotificationSender? transport;
         try
         {
             transport = _transportResolver(item);
@@ -140,7 +140,7 @@ public sealed class EmailOutboxProcessor
         EmailDeliveryResult result;
         try
         {
-            result = await transport.SendAsync(message, cancellationToken).ConfigureAwait(false);
+            result = await transport.SendSelfNotificationAsync(message, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
