@@ -30,11 +30,13 @@ Self-contained packages include the required .NET runtime. Framework-dependent p
 
 ## Install
 
-1. Open the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases).
-2. Download the package for your Windows architecture.
-3. Verify its SHA-256 value against `SHA256SUMS.txt`.
-4. Extract a portable ZIP and run `CodexUsageMonitor.exe`, or install the signed MSIX package when available.
-5. Complete onboarding and choose the Codex profiles to monitor.
+For a normal Windows installation, open the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases) and choose the signed `CodexUsageMonitor-6.0.0.msixbundle` marked **Latest stable release**. On x64-only systems, the signed `CodexUsageMonitor-6.0.0-x64.msix` is equivalent. Open the package, accept the Windows install prompt, then complete onboarding. To uninstall, use Windows **Settings > Apps > Installed apps > Codex Usage Monitor > Uninstall**.
+
+The **Portable ZIP** is the secondary option. Choose the x64 self-contained ZIP for most PCs. Extract it to a writable folder such as `C:\Users\<you>\Apps\CodexUsageMonitor`, keep the folder together, and run `CodexUsageMonitor.exe`. The archive contains `portable.mode`, so settings, history, logs, and update state stay in its `data` folder. To uninstall, exit the app from the notification area and delete the extracted folder. No registry entry or separate uninstaller is required.
+
+The framework-dependent ZIP is an advanced option for maintainers or machines that already have the .NET 10 Desktop Runtime. Verify the SHA-256 value of every downloaded artifact against `SHA256SUMS.txt`.
+
+Public v6 packages are the successor to the **v5.0.0 Legacy** release. Use v5.0.0 only when you need to recover an older installation or follow its rollback instructions. Preview, unsigned, or development-signed artifacts are labeled as such and are not the stable download.
 
 Official production artifacts are published only when the release checks described in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md) pass. Development-signed or unsigned artifacts are identified explicitly and are not represented as production-signed builds.
 

@@ -38,21 +38,45 @@ foreach ($rid in $RuntimeIdentifiers) {
         }
         $portable = & "$PSScriptRoot/publish-portable.ps1" @publishArguments
         if ($LASTEXITCODE -ne 0) { throw "Portable publish failed for $rid/$flavor." }
-        $name = "CodexUsageMonitor-$Version-$rid-portable-$flavor.zip"
-        $output = Join-Path $releaseDirectory $name
-        & python tools/deterministic_zip.py --source $portable --output $output --prefix CodexUsageMonitor
-        if ($LASTEXITCODE -ne 0) { throw "Portable archive creation failed for $name." }
-        $packages.Add($output)
+
+        foreach ($instructionName in @('INSTALL.txt','UNINSTALL.txt')) {
+            $instructionSource = Join-Path $RepositoryRoot "packaging/portable/$instructionName"
+            Copy-Item -LiteralPath $instructionSource -Destination (Join-Path $portable $instructionName) -Force
+        }
+
+        # Portable packages keep their settings, history, logs, and update state
+        # beside the executable. Add the marker only to the user-facing ZIP.
+        # Update payloads must not carry it because the updater copies the
+        # existing marker and data directory transactionally.
+        $portableMarker = Join-Path $portable 'portable.mode'
+        if (Test-Path -LiteralPath $portableMarker) { Remove-Item -LiteralPath $portableMarker -Force }
+        New-Item -ItemType File -Path $portableMarker -Force | Out-Null
 
         if ($selfContained) {
             $updateName = "CodexUsageMonitor-$Version-$rid-update.zip"
             $updateOutput = Join-Path $releaseDirectory $updateName
+            Remove-Item -LiteralPath $portableMarker -Force
+            foreach ($instructionName in @('INSTALL.txt','UNINSTALL.txt')) {
+                $instructionPath = Join-Path $portable $instructionName
+                if (Test-Path -LiteralPath $instructionPath) { Remove-Item -LiteralPath $instructionPath -Force }
+            }
             & python tools/deterministic_zip.py --source $portable --output $updateOutput --prefix ''
             if ($LASTEXITCODE -ne 0) { throw "Update payload archive creation failed for $updateName." }
             & python tools/verify_update_archive.py --archive $updateOutput --version $Version
             if ($LASTEXITCODE -ne 0) { throw "Update payload archive verification failed for $updateName." }
             $packages.Add($updateOutput)
+            foreach ($instructionName in @('INSTALL.txt','UNINSTALL.txt')) {
+                $instructionSource = Join-Path $RepositoryRoot "packaging/portable/$instructionName"
+                Copy-Item -LiteralPath $instructionSource -Destination (Join-Path $portable $instructionName) -Force
+            }
+            New-Item -ItemType File -Path $portableMarker -Force | Out-Null
         }
+
+        $name = "CodexUsageMonitor-$Version-$rid-portable-$flavor.zip"
+        $output = Join-Path $releaseDirectory $name
+        & python tools/deterministic_zip.py --source $portable --output $output --prefix CodexUsageMonitor
+        if ($LASTEXITCODE -ne 0) { throw "Portable archive creation failed for $name." }
+        $packages.Add($output)
     }
 }
 
