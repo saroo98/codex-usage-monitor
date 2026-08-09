@@ -9,6 +9,7 @@ public enum WidgetSize
     Medium,
     Small,
     ExtraSmall,
+    XXS,
 }
 
 public enum AppTheme
@@ -35,10 +36,15 @@ public enum UpdateChannel
 
 public enum EmailProviderMode
 {
-    Disabled,
-    GenericSmtp,
-    MicrosoftOAuth,
-    GoogleOAuth,
+    Off = 0,
+    OtherSmtp = 1,
+    Microsoft365 = 2,
+    Gmail = 3,
+    ProtonMailBridge = 4,
+    Disabled = Off,
+    GenericSmtp = OtherSmtp,
+    MicrosoftOAuth = Microsoft365,
+    GoogleOAuth = Gmail,
 }
 
 public enum SmtpSecurityMode
@@ -51,7 +57,7 @@ public enum SmtpSecurityMode
 
 public sealed record AppSettings
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 
@@ -105,6 +111,8 @@ public sealed record WidgetSettings
 
     public bool SnapToEdges { get; init; } = true;
 
+    public bool AllowTaskbarOverlap { get; init; }
+
     public bool ReduceMotion { get; init; }
 
     [JsonConverter(typeof(JsonStringEnumConverter<ResetTimeDisplayMode>))]
@@ -134,7 +142,9 @@ public sealed record WidgetPlacement(
     double HeightDip,
     double DpiScaleX,
     double DpiScaleY,
-    DateTimeOffset SavedAtUtc);
+    DateTimeOffset SavedAtUtc,
+    int? PhysicalLeft = null,
+    int? PhysicalTop = null);
 
 public sealed record LimitSettings
 {
@@ -191,7 +201,11 @@ public sealed record EmailEventPreferences
 public sealed record EmailSettings
 {
     [JsonConverter(typeof(JsonStringEnumConverter<EmailProviderMode>))]
-    public EmailProviderMode Provider { get; init; } = EmailProviderMode.Disabled;
+    public EmailProviderMode Provider { get; init; } = EmailProviderMode.Off;
+
+    public bool Enabled { get; init; }
+
+    public string? ConnectedAddress { get; init; }
 
     public string? SenderAddress { get; init; }
 
@@ -215,6 +229,8 @@ public sealed record EmailSettings
     public string? OAuthTokenReference { get; init; }
 
     public string? OAuthRegistrationId { get; init; }
+
+    public IReadOnlyList<string> ObsoleteSecretReferences { get; init; } = [];
 
     public bool IncludeAccountLabel { get; init; }
 

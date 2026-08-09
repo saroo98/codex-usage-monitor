@@ -7,7 +7,6 @@ using CodexUsageMonitor.Core.Abstractions;
 using CodexUsageMonitor.Core.Settings;
 using CodexUsageMonitor.Core.Usage;
 using CodexUsageMonitor.Email.Models;
-using CodexUsageMonitor.Email.Outbox;
 using CodexUsageMonitor.Notifications.Native;
 using CodexUsageMonitor.Persistence.Database;
 using CodexUsageMonitor.Persistence.Diagnostics;
@@ -24,7 +23,7 @@ public sealed class RuntimeActionService
     private readonly SupportBundleBuilder _support;
     private readonly UsageDatabase _database;
     private readonly INativeNotificationService _native;
-    private readonly EmailOutboxQueue _email;
+    private readonly EmailTransportFactory _email;
     private readonly ApplicationSettingsService _settings;
     private readonly AppDataPaths _paths;
     private readonly ProfileMonitoringCoordinatorService _profileMonitoring;
@@ -43,7 +42,7 @@ public sealed class RuntimeActionService
         SupportBundleBuilder support,
         UsageDatabase database,
         INativeNotificationService native,
-        EmailOutboxQueue email,
+        EmailTransportFactory email,
         ApplicationSettingsService settings,
         AppDataPaths paths,
         ProfileMonitoringCoordinatorService profileMonitoring,
@@ -146,20 +145,23 @@ public sealed class RuntimeActionService
     private async Task TestEmailAsync(CancellationToken cancellationToken)
     {
         var settings = _settings.Current.Email;
-        if (settings.Provider is EmailProviderMode.Disabled || string.IsNullOrWhiteSpace(settings.SenderAddress) || settings.Recipients.Count == 0)
+        if (settings.Provider is EmailProviderMode.Off || string.IsNullOrWhiteSpace(settings.ConnectedAddress ?? settings.SenderAddress))
         {
             throw new InvalidOperationException("Email is not fully configured.");
         }
 
-        var now = _clock.UtcNow;
-        var message = new EmailMessage(
-            settings.SenderAddress,
-            settings.Recipients,
+        var message = new SelfNotification(
             "Codex Usage Monitor test",
             "This is a local configuration test from Codex Usage Monitor.",
             "<p>This is a local configuration test from <strong>Codex Usage Monitor</strong>.</p>",
             $"test:{Guid.NewGuid():N}");
-        await _email.EnqueueAsync(message, _state.ActiveProfileId ?? _settings.Current.Profiles[0].Id, "diagnostic-test", now, now.AddHours(1), cancellationToken).ConfigureAwait(false);
+        var transport = _email.ResolveForExplicitTest()
+            ?? throw new InvalidOperationException("Email is not fully configured.");
+        var result = await transport.SendSelfNotificationAsync(message, cancellationToken).ConfigureAwait(false);
+        if (!result.Delivered)
+        {
+            throw new InvalidOperationException(result.SafeErrorCode ?? "email.test_failed");
+        }
     }
 
     private Task<UpdateRuntimeSnapshot> CheckForUpdatesAsync(CancellationToken cancellationToken) =>

@@ -63,7 +63,7 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SurfaceElevatedBrush}" />
+              <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
               <Setter TargetName="Chrome" Property="Opacity" Value="0.82" />
@@ -96,6 +96,13 @@
     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
     <Setter Property="Padding" Value="8,6" />
     <Setter Property="MinHeight" Value="36" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusVisualStyle}" />
+  </Style>
+  <Style TargetType="ComboBoxItem">
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="8,5" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusVisualStyle}" />
   </Style>
   <Style TargetType="CheckBox">

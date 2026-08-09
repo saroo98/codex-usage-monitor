@@ -1,5 +1,6 @@
 using System.Net.Http;
 using CodexUsageMonitor.Codex.Transport;
+using CodexUsageMonitor.App.Services;
 using CodexUsageMonitor.Notifications.Native;
 using CodexUsageMonitor.Persistence.Paths;
 using CodexUsageMonitor.Persistence.Settings;
@@ -27,4 +28,6 @@ public sealed record AppHostOptions
     public bool TestMode { get; init; }
 
     public bool AllowUnsignedDevelopmentUpdates { get; init; }
+
+    public EmailProviderRegistrations? EmailProviderRegistrations { get; init; }
 }

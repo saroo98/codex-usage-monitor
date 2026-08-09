@@ -192,26 +192,34 @@ public sealed class RuntimeDiagnosticsService
         EmailSettings email,
         CancellationToken cancellationToken)
     {
-        var hasEnvelope = !string.IsNullOrWhiteSpace(email.SenderAddress) && email.Recipients.Count > 0;
+        if (!email.Enabled)
+        {
+            return (true, "email.not_enabled", "NotApplicable", "NotApplicable");
+        }
+
         switch (email.Provider)
         {
-            case EmailProviderMode.Disabled:
-                return (true, "email.disabled", "NotApplicable", "NotApplicable");
+            case EmailProviderMode.Off:
+                return (true, "email.off", "NotApplicable", "NotApplicable");
 
-            case EmailProviderMode.GenericSmtp:
+            case EmailProviderMode.OtherSmtp:
+            case EmailProviderMode.ProtonMailBridge:
                 {
                     var credential = await _emailCredentials.GetSmtpPasswordStatusAsync(
                         email.SenderAddress,
                         cancellationToken).ConfigureAwait(false);
-                    var ready = hasEnvelope && credential.IsStored && !string.IsNullOrWhiteSpace(email.SmtpHost);
+                    var ready = !string.IsNullOrWhiteSpace(email.SenderAddress) &&
+                        credential.IsStored &&
+                        !string.IsNullOrWhiteSpace(email.SmtpHost) &&
+                        email.SmtpSecurity is not SmtpSecurityMode.None;
                     return (ready, ready ? "email.ready" : "email.incomplete", credential.State.ToString(), "NotApplicable");
                 }
 
-            case EmailProviderMode.MicrosoftOAuth:
-            case EmailProviderMode.GoogleOAuth:
+            case EmailProviderMode.Microsoft365:
+            case EmailProviderMode.Gmail:
                 {
                     var oauth = await _oauthConnections.GetStatusAsync(cancellationToken).ConfigureAwait(false);
-                    var ready = hasEnvelope && !string.IsNullOrWhiteSpace(email.OAuthClientId) && oauth.IsConnected;
+                    var ready = !string.IsNullOrWhiteSpace(email.ConnectedAddress) && oauth.IsConnected;
                     return (ready, ready ? "email.ready" : "email.incomplete", "NotApplicable", oauth.State.ToString());
                 }
 
@@ -313,9 +321,9 @@ public sealed class RuntimeDiagnosticsService
         : paths.IsPortable ? "Portable" : "Unpackaged";
 
     private static bool IsEmailConfigured(EmailSettings settings) =>
-        settings.Provider is not EmailProviderMode.Disabled &&
-        !string.IsNullOrWhiteSpace(settings.SenderAddress) &&
-        settings.Recipients.Count > 0;
+        settings.Enabled &&
+        settings.Provider is not EmailProviderMode.Off &&
+        !string.IsNullOrWhiteSpace(settings.ConnectedAddress ?? settings.SenderAddress);
 
     private async Task<string> InspectSignatureAsync(string? processPath, CancellationToken cancellationToken)
     {

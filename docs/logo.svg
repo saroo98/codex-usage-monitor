@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="Codex Usage Monitor application icon" shape-rendering="geometricPrecision">
+  <title>Codex Usage Monitor application icon</title>
+  <rect width="1000" height="1000" rx="190" fill="#090B0D"/>
+  <rect x="16" y="16" width="968" height="968" rx="175" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="4"/>
+  <path d="M 718 294 A 300 300 0 1 0 718 706" fill="none" stroke="#F5F5F1" stroke-width="104" stroke-linecap="butt" stroke-linejoin="round"/>
+  <rect x="405" y="572" width="54" height="118" rx="4" fill="#147653"/>
+  <rect x="485" y="494" width="54" height="196" rx="4" fill="#1E9167"/>
+  <rect x="565" y="412" width="54" height="278" rx="4" fill="#2EAE7E"/>
+  <rect x="645" y="308" width="54" height="382" rx="4" fill="#63D7A6"/>
+</svg>

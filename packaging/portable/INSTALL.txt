@@ -1,0 +1,15 @@
+Codex Usage Monitor portable installation
+
+1. Extract this ZIP to a folder that you can write to. For example:
+   C:\Users\<you>\Apps\CodexUsageMonitor
+2. Keep the extracted folder together. Do not run the EXE from inside the ZIP.
+3. Double-click CodexUsageMonitor.exe.
+4. Complete onboarding and select the Codex profiles to monitor.
+
+This package contains portable.mode. Settings, history, logs, and update state are
+stored in the data folder beside the EXE. The package does not need administrator
+rights. Windows Defender or SmartScreen may show a warning for an unsigned preview.
+Use the signed MSIX package for the normal stable installation when it is available.
+
+The framework-dependent package also needs the .NET 10 Desktop Runtime. The
+self-contained package includes that runtime and is the recommended portable ZIP.

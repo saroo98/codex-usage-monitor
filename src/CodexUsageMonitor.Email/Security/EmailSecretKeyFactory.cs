@@ -16,14 +16,14 @@ public static class EmailSecretKeyFactory
     public static string OAuthTokens(EmailProviderMode provider, string senderAddress, string? registrationId) =>
         Create(provider switch
         {
-            EmailProviderMode.MicrosoftOAuth => "microsoft-oauth",
-            EmailProviderMode.GoogleOAuth => "google-oauth",
+            EmailProviderMode.Microsoft365 => "microsoft-oauth",
+            EmailProviderMode.Gmail => "google-oauth",
             _ => throw new ArgumentOutOfRangeException(nameof(provider)),
         }, senderAddress, registrationId);
 
     public static string OAuthRegistrationId(EmailProviderMode provider, string clientId)
     {
-        if (provider is not (EmailProviderMode.MicrosoftOAuth or EmailProviderMode.GoogleOAuth))
+        if (provider is not (EmailProviderMode.Microsoft365 or EmailProviderMode.Gmail))
         {
             throw new ArgumentOutOfRangeException(nameof(provider));
         }

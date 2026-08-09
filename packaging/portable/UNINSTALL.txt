@@ -1,0 +1,12 @@
+Codex Usage Monitor portable removal
+
+1. Exit Codex Usage Monitor from its notification-area menu.
+2. Wait for any update or updater process to finish.
+3. Delete the extracted CodexUsageMonitor folder.
+
+Because this package contains portable.mode, its settings, history, logs, and
+update state are in that folder's data directory. Delete the folder only after
+you have copied anything you want to keep.
+
+For the signed MSIX installation, use Windows Settings > Apps > Installed apps >
+Codex Usage Monitor > Uninstall. MSIX data removal follows Windows package rules.

@@ -10,7 +10,7 @@ namespace CodexUsageMonitor.App.Runtime;
 
 public sealed class WindowCoordinator : IDisposable
 {
-    private readonly WidgetWindow _widgetWindow;
+    private readonly WidgetWindowSession _widgetWindows;
     private readonly Func<SettingsWindow> _settingsWindowFactory;
     private readonly Func<OnboardingWindow> _onboardingWindowFactory;
     private readonly Func<ResetRedemptionIntent, ResetCreditConfirmationDialog> _resetDialogFactory;
@@ -21,7 +21,7 @@ public sealed class WindowCoordinator : IDisposable
     private bool _disposed;
 
     public WindowCoordinator(
-        WidgetWindow widgetWindow,
+        WidgetWindowSession widgetWindows,
         Func<SettingsWindow> settingsWindowFactory,
         Func<OnboardingWindow> onboardingWindowFactory,
         Func<ResetRedemptionIntent, ResetCreditConfirmationDialog> resetDialogFactory,
@@ -29,7 +29,7 @@ public sealed class WindowCoordinator : IDisposable
         UsageApplicationState state,
         ResetCreditRedemptionService resetCredits)
     {
-        _widgetWindow = widgetWindow ?? throw new ArgumentNullException(nameof(widgetWindow));
+        _widgetWindows = widgetWindows ?? throw new ArgumentNullException(nameof(widgetWindows));
         _settingsWindowFactory = settingsWindowFactory ?? throw new ArgumentNullException(nameof(settingsWindowFactory));
         _onboardingWindowFactory = onboardingWindowFactory ?? throw new ArgumentNullException(nameof(onboardingWindowFactory));
         _resetDialogFactory = resetDialogFactory ?? throw new ArgumentNullException(nameof(resetDialogFactory));
@@ -40,19 +40,19 @@ public sealed class WindowCoordinator : IDisposable
 
     public event EventHandler<bool>? WidgetVisibilityChanged;
 
-    public bool IsWidgetVisible => _widgetWindow.IsVisible;
+    public bool IsWidgetVisible => _widgetWindows.IsVisible;
 
     public void ShowWidget()
     {
         ThrowIfDisposed();
-        _widgetWindow.ShowWithoutActivation();
+        _widgetWindows.Show();
         WidgetVisibilityChanged?.Invoke(this, true);
     }
 
     public void HideWidget()
     {
         ThrowIfDisposed();
-        _widgetWindow.Hide();
+        _widgetWindows.Hide();
         WidgetVisibilityChanged?.Invoke(this, false);
     }
 
@@ -93,7 +93,7 @@ public sealed class WindowCoordinator : IDisposable
             Widget = current.Widget with { ClickThrough = false },
         }, cancellationToken);
 
-    public void ReflowWidget() => _widgetWindow.RestorePlacement();
+    public void ReflowWidget() => _widgetWindows.RestorePlacement();
 
 
     public async Task ReviewResetCreditAsync(Guid profileId, CancellationToken cancellationToken)
@@ -142,9 +142,9 @@ public sealed class WindowCoordinator : IDisposable
         {
             var intent = await _resetCredits.PrepareAsync(profileId, credit.Id, cancellationToken);
             var dialog = _resetDialogFactory(intent);
-            if (_widgetWindow.IsVisible)
+            if (_widgetWindows.VisibleOwner is { } owner)
             {
-                dialog.Owner = _widgetWindow;
+                dialog.Owner = owner;
             }
 
             if (dialog.ShowDialog() is not true || !dialog.Confirmed)
@@ -204,7 +204,7 @@ public sealed class WindowCoordinator : IDisposable
             _settingsWindow = null;
         }
 
-        _widgetWindow.CloseForExit();
+        _widgetWindows.CloseForExit();
     }
 
     private void OnSettingsWindowClosed(object? sender, EventArgs eventArgs)
@@ -227,6 +227,7 @@ public sealed class WindowCoordinator : IDisposable
         }
 
         CloseForExit();
+        _widgetWindows.Dispose();
         _disposed = true;
     }
 }

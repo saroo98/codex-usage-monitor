@@ -2,6 +2,9 @@
 param(
     [string]$Version,
     [string]$UpdatePublicKeyBase64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    [string]$GoogleOAuthClientId,
+    [string]$MicrosoftOAuthClientId,
+    [string]$MicrosoftOAuthTenant = 'common',
     [ValidateSet('x64','arm64')]
     [string[]]$Architectures = @('x64','arm64'),
     [string]$IdentityName = 'saroo98.CodexUsageMonitor',
@@ -90,6 +93,8 @@ foreach ($architecture in $Architectures) {
     $arguments = @{
         RuntimeIdentifier = $rid; SelfContained = $true; Version = $Version
         Configuration = $Configuration; NoRestore = [bool]$NoRestore; UpdatePublicKeyBase64 = $UpdatePublicKeyBase64
+        GoogleOAuthClientId = $GoogleOAuthClientId; MicrosoftOAuthClientId = $MicrosoftOAuthClientId
+        MicrosoftOAuthTenant = $MicrosoftOAuthTenant
     }
     $portable = & "$PSScriptRoot/publish-portable.ps1" @arguments
     if ($LASTEXITCODE -ne 0) { throw "MSIX publish failed for $architecture." }

@@ -1,10 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Net;
+using System.Net.Http;
 using CodexUsageMonitor.App.Services;
 using CodexUsageMonitor.Core.Security;
 using CodexUsageMonitor.Core.Settings;
 using CodexUsageMonitor.Email.OAuth;
 using CodexUsageMonitor.Email.Security;
+using CodexUsageMonitor.Email.Models;
 using CodexUsageMonitor.Persistence.Settings;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -30,18 +33,18 @@ public sealed class OAuthConnectionServiceTests
         var service = new OAuthConnectionService(
             settings,
             secrets,
-            new FakeMicrosoftFlow(tokenStore),
+            tokenStore,
+            new EmailProviderRegistrations("google-client-id", "microsoft-client-id"),
+            new FakeMicrosoftFlow(),
             new FakeGoogleFlow(tokenStore),
-            new NoOpBrowser(),
+            new FakeIdentityResolver("sender@example.com"),
+            new HttpClient(new NoOpHandler()),
             NullLogger<OAuthConnectionService>.Instance);
 
-        var status = await service.ConnectGoogleAsync(
-            "sender@example.com",
-            "google-client-id",
-            CancellationToken.None);
+        var status = await service.ConnectGoogleAsync(CancellationToken.None);
 
         Assert.AreEqual(OAuthConnectionState.Connected, status.State);
-        Assert.AreEqual(EmailProviderMode.GoogleOAuth, settings.Current.Email.Provider);
+        Assert.AreEqual(EmailProviderMode.Gmail, settings.Current.Email.Provider);
         Assert.IsNotNull(settings.Current.Email.OAuthTokenReference);
         Assert.IsNotNull(settings.Current.Email.OAuthRegistrationId);
         Assert.IsNull(settings.Current.Email.CredentialReference);
@@ -53,17 +56,18 @@ public sealed class OAuthConnectionServiceTests
     public async Task ConnectRestoresPriorTokenWhenSettingsPersistenceFails()
     {
         var registration = EmailSecretKeyFactory.OAuthRegistrationId(
-            EmailProviderMode.GoogleOAuth,
+            EmailProviderMode.Gmail,
             "google-client-id");
         var reference = EmailSecretKeyFactory.OAuthTokens(
-            EmailProviderMode.GoogleOAuth,
+            EmailProviderMode.Gmail,
             "sender@example.com",
             registration);
         var initial = BaseSettings() with
         {
             Email = BaseSettings().Email with
             {
-                Provider = EmailProviderMode.GoogleOAuth,
+                Provider = EmailProviderMode.Gmail,
+                ConnectedAddress = "sender@example.com",
                 OAuthClientId = "google-client-id",
                 OAuthRegistrationId = registration,
                 OAuthTokenReference = reference,
@@ -79,15 +83,15 @@ public sealed class OAuthConnectionServiceTests
         var service = new OAuthConnectionService(
             settings,
             secrets,
-            new FakeMicrosoftFlow(tokenStore),
+            tokenStore,
+            new EmailProviderRegistrations("google-client-id", "microsoft-client-id"),
+            new FakeMicrosoftFlow(),
             new FakeGoogleFlow(tokenStore),
-            new NoOpBrowser(),
+            new FakeIdentityResolver("sender@example.com"),
+            new HttpClient(new NoOpHandler()),
             NullLogger<OAuthConnectionService>.Instance);
 
-        await Assert.ThrowsAsync<IOException>(() => service.ConnectGoogleAsync(
-            "sender@example.com",
-            "google-client-id",
-            CancellationToken.None));
+        await Assert.ThrowsAsync<IOException>(() => service.ConnectGoogleAsync(CancellationToken.None));
 
         CollectionAssert.AreEqual(prior, secrets.Copy(reference)!);
         Assert.AreEqual(reference, settings.Current.Email.OAuthTokenReference);
@@ -97,17 +101,18 @@ public sealed class OAuthConnectionServiceTests
     public async Task DisconnectRestoresTokenWhenSettingsPersistenceFails()
     {
         var registration = EmailSecretKeyFactory.OAuthRegistrationId(
-            EmailProviderMode.GoogleOAuth,
+            EmailProviderMode.Gmail,
             "google-client-id");
         var reference = EmailSecretKeyFactory.OAuthTokens(
-            EmailProviderMode.GoogleOAuth,
+            EmailProviderMode.Gmail,
             "sender@example.com",
             registration);
         var initial = BaseSettings() with
         {
             Email = BaseSettings().Email with
             {
-                Provider = EmailProviderMode.GoogleOAuth,
+                Provider = EmailProviderMode.Gmail,
+                ConnectedAddress = "sender@example.com",
                 OAuthClientId = "google-client-id",
                 OAuthRegistrationId = registration,
                 OAuthTokenReference = reference,
@@ -117,15 +122,18 @@ public sealed class OAuthConnectionServiceTests
         var settings = new ApplicationSettingsService(settingsStore);
         await settings.InitializeAsync(CancellationToken.None);
         var secrets = new MemorySecretStore();
-        var prior = Encoding.UTF8.GetBytes("token-payload");
-        await secrets.SetAsync(reference, prior, CancellationToken.None);
         var tokenStore = new OAuthTokenStore(secrets);
+        await tokenStore.SaveAsync(reference, Tokens(), CancellationToken.None);
+        var prior = secrets.Copy(reference)!;
         var service = new OAuthConnectionService(
             settings,
             secrets,
-            new FakeMicrosoftFlow(tokenStore),
+            tokenStore,
+            new EmailProviderRegistrations("google-client-id", "microsoft-client-id"),
+            new FakeMicrosoftFlow(),
             new FakeGoogleFlow(tokenStore),
-            new NoOpBrowser(),
+            new FakeIdentityResolver("sender@example.com"),
+            new HttpClient(new NoOpHandler()),
             NullLogger<OAuthConnectionService>.Instance);
 
         await Assert.ThrowsAsync<IOException>(() => service.DisconnectAsync(CancellationToken.None));
@@ -138,38 +146,24 @@ public sealed class OAuthConnectionServiceTests
     {
         Email = new EmailSettings
         {
-            Provider = EmailProviderMode.GenericSmtp,
+            Provider = EmailProviderMode.OtherSmtp,
             SenderAddress = "sender@example.com",
-            Recipients = ["recipient@example.com"],
+            Recipients = [],
             SmtpHost = "smtp.example.com",
         },
     };
 
-    private sealed class FakeMicrosoftFlow(OAuthTokenStore store) : IMicrosoftDeviceCodeFlow
+    private sealed class FakeMicrosoftFlow : IMicrosoftPkceAuthorizationFlow
     {
-        public Task<DeviceCodeChallenge> BeginAsync(
+        public async Task<OAuthTokenSet> ConnectAsync(
             string tenant,
             string clientId,
             IReadOnlyList<string> scopes,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(new DeviceCodeChallenge(
-                "ABCD-EFGH",
-                new Uri("https://microsoft.com/devicelogin"),
-                null,
-                DateTimeOffset.UtcNow.AddMinutes(10),
-                TimeSpan.Zero,
-                "device-code"));
-
-        public async Task<OAuthTokenSet> CompleteAsync(
-            DeviceCodeChallenge challenge,
-            string tenant,
-            string clientId,
-            string tokenStoreKey,
-            IReadOnlyList<string> scopes,
+            TimeSpan timeout,
             CancellationToken cancellationToken)
         {
             var tokens = Tokens();
-            await store.SaveAsync(tokenStoreKey, tokens, cancellationToken);
+            await Task.CompletedTask;
             return tokens;
         }
     }
@@ -178,7 +172,6 @@ public sealed class OAuthConnectionServiceTests
     {
         public async Task<OAuthTokenSet> ConnectAsync(
             string clientId,
-            string? clientSecret,
             string tokenStoreKey,
             IReadOnlyList<string> scopes,
             TimeSpan timeout,
@@ -190,9 +183,19 @@ public sealed class OAuthConnectionServiceTests
         }
     }
 
-    private sealed class NoOpBrowser : IBrowserLauncher
+    private sealed class FakeIdentityResolver(string address) : IProviderEmailAccountIdentityResolver
     {
-        public Task OpenAsync(Uri uri, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<EmailAccountIdentity> ResolveGoogleAsync(OAuthAccessToken token, CancellationToken cancellationToken) =>
+            Task.FromResult(EmailAccountIdentity.Create(address));
+
+        public Task<EmailAccountIdentity> ResolveMicrosoftAsync(OAuthAccessToken token, CancellationToken cancellationToken) =>
+            Task.FromResult(EmailAccountIdentity.Create(address));
+    }
+
+    private sealed class NoOpHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
     }
 
     private static OAuthTokenSet Tokens() => new(

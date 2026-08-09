@@ -14,7 +14,6 @@ public partial class SettingsWindow : Window
     private readonly EmailCredentialService _emailCredentials = null!;
     private readonly OAuthConnectionService _oauthConnections = null!;
     private CancellationTokenSource? _oauthOperation;
-    private MicrosoftDeviceCodeDialog? _deviceCodeDialog;
 
     private SettingsWindow()
     {
@@ -55,6 +54,8 @@ public partial class SettingsWindow : Window
     private async void OnLoaded(object sender, RoutedEventArgs eventArgs)
     {
         ApplyAdaptiveLayout();
+        _viewModel.Email.GoogleConnectionAvailable = _oauthConnections.Registrations.GoogleAvailable;
+        _viewModel.Email.MicrosoftConnectionAvailable = _oauthConnections.Registrations.MicrosoftAvailable;
         await RefreshCredentialStatusAsync().ConfigureAwait(true);
         await RefreshOAuthStatusAsync().ConfigureAwait(true);
         await _viewModel.RefreshMigrationStatusAsync(CancellationToken.None).ConfigureAwait(true);
@@ -86,6 +87,7 @@ public partial class SettingsWindow : Window
         try
         {
             var status = await _emailCredentials.StoreSmtpPasswordAsync(
+                _viewModel.Email.Provider,
                 _viewModel.Email.SenderAddress,
                 password,
                 CancellationToken.None).ConfigureAwait(true);
@@ -128,9 +130,9 @@ public partial class SettingsWindow : Window
 
     private async void OnConnectOAuth(object sender, RoutedEventArgs eventArgs)
     {
-        if (!_viewModel.Email.IsOAuthProvider || string.IsNullOrWhiteSpace(_viewModel.Email.SenderAddress) || string.IsNullOrWhiteSpace(_viewModel.Email.OAuthClientId))
+        if (!_viewModel.Email.IsOAuthProvider)
         {
-            _viewModel.ReportEmailOperationFailure("Select an OAuth provider and enter the sender address and client ID first.");
+            _viewModel.ReportEmailOperationFailure("Select Gmail or Outlook / Microsoft 365 first.");
             return;
         }
 
@@ -141,21 +143,13 @@ public partial class SettingsWindow : Window
         try
         {
             OAuthConnectionStatus status;
-            if (_viewModel.Email.Provider is CodexUsageMonitor.Core.Settings.EmailProviderMode.MicrosoftOAuth)
+            if (_viewModel.Email.Provider is CodexUsageMonitor.Core.Settings.EmailProviderMode.Microsoft365)
             {
-                status = await _oauthConnections.ConnectMicrosoftAsync(
-                    _viewModel.Email.SenderAddress,
-                    _viewModel.Email.OAuthClientId,
-                    _viewModel.Email.OAuthTenant,
-                    PresentMicrosoftChallengeAsync,
-                    _oauthOperation.Token).ConfigureAwait(true);
+                status = await _oauthConnections.ConnectMicrosoftAsync(_oauthOperation.Token).ConfigureAwait(true);
             }
             else
             {
-                status = await _oauthConnections.ConnectGoogleAsync(
-                    _viewModel.Email.SenderAddress,
-                    _viewModel.Email.OAuthClientId,
-                    _oauthOperation.Token).ConfigureAwait(true);
+                status = await _oauthConnections.ConnectGoogleAsync(_oauthOperation.Token).ConfigureAwait(true);
             }
 
             _viewModel.SetOAuthConnectionStatus(status);
@@ -170,7 +164,6 @@ public partial class SettingsWindow : Window
         }
         finally
         {
-            CloseDeviceCodeDialog();
             _viewModel.Email.OAuthBusy = false;
         }
     }
@@ -194,20 +187,6 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private Task PresentMicrosoftChallengeAsync(MicrosoftOAuthPrompt challenge, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Dispatcher.InvokeAsync(() =>
-        {
-            CloseDeviceCodeDialog();
-            _deviceCodeDialog = new MicrosoftDeviceCodeDialog(challenge, () => _oauthOperation?.Cancel())
-            {
-                Owner = this,
-            };
-            _deviceCodeDialog.Show();
-        }).Task;
-    }
-
     private async Task RefreshOAuthStatusAsync()
     {
         try
@@ -219,17 +198,6 @@ public partial class SettingsWindow : Window
         {
             _viewModel.ReportEmailOperationFailure("OAuth connection status is unavailable. Check Diagnostics for details.");
         }
-    }
-
-    private void CloseDeviceCodeDialog()
-    {
-        if (_deviceCodeDialog is null)
-        {
-            return;
-        }
-
-        _deviceCodeDialog.CloseAfterCompletion();
-        _deviceCodeDialog = null;
     }
 
     private static string SafeOAuthMessage(Exception exception) => exception is OAuthProtocolException protocol
@@ -331,7 +299,6 @@ public partial class SettingsWindow : Window
         _oauthOperation?.Cancel();
         _oauthOperation?.Dispose();
         _oauthOperation = null;
-        CloseDeviceCodeDialog();
         _viewModel.RequestClose -= OnRequestClose;
         Loaded -= OnLoaded;
         Closed -= OnClosed;

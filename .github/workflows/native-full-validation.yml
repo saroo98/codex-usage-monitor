@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - codex/native-6.0-integration
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -21,7 +23,7 @@ env:
 jobs:
   validate:
     name: Release x64 and Arm64 validation
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 90
 
     steps:
@@ -41,7 +43,17 @@ jobs:
 
       - name: Build and independently verify unsigned release candidate
         shell: pwsh
-        run: ./eng/package-release.ps1 -Version 6.0.0 -OutputRoot artifacts/release-candidate -Configuration Release
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_CLIENT_ID }}
+          MICROSOFT_OAUTH_CLIENT_ID: ${{ vars.MICROSOFT_OAUTH_CLIENT_ID }}
+          MICROSOFT_OAUTH_TENANT: ${{ vars.MICROSOFT_OAUTH_TENANT }}
+        run: |
+          . ./eng/ProductVersion.ps1
+          $version = Get-ProductVersion
+          ./eng/package-release.ps1 -Version $version -OutputRoot artifacts/release-candidate -Configuration Release `
+            -GoogleOAuthClientId $env:GOOGLE_OAUTH_CLIENT_ID `
+            -MicrosoftOAuthClientId $env:MICROSOFT_OAUTH_CLIENT_ID `
+            -MicrosoftOAuthTenant $env:MICROSOFT_OAUTH_TENANT
 
       - name: Upload verification evidence
         if: always()

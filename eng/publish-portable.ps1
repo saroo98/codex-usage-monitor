@@ -14,6 +14,12 @@ param(
 
     [string]$UpdatePublicKeyBase64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
 
+    [string]$GoogleOAuthClientId,
+
+    [string]$MicrosoftOAuthClientId,
+
+    [string]$MicrosoftOAuthTenant = 'common',
+
     [switch]$NoRestore
 )
 
@@ -48,6 +54,9 @@ $common = @(
     ('-p:UpdatePublicKeyBase64=' + $UpdatePublicKeyBase64)
 )
 if ($NoRestore) { $common += '--no-restore' }
+if (-not [string]::IsNullOrWhiteSpace($GoogleOAuthClientId)) { $common += ('-p:GoogleOAuthClientId=' + $GoogleOAuthClientId.Trim()) }
+if (-not [string]::IsNullOrWhiteSpace($MicrosoftOAuthClientId)) { $common += ('-p:MicrosoftOAuthClientId=' + $MicrosoftOAuthClientId.Trim()) }
+if (-not [string]::IsNullOrWhiteSpace($MicrosoftOAuthTenant)) { $common += ('-p:MicrosoftOAuthTenant=' + $MicrosoftOAuthTenant.Trim()) }
 
 & dotnet publish src/CodexUsageMonitor.App/CodexUsageMonitor.App.csproj @common '--output' $appOutput '-p:PublishSingleFile=false' | Out-Host
 if ($LASTEXITCODE -ne 0) { throw "Application publish failed for $RuntimeIdentifier/$flavor." }

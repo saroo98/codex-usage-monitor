@@ -48,9 +48,17 @@ public static class SettingsMigrator
         }
 
         var migrated = false;
-        if (sourceVersion == 1)
+        var currentVersion = sourceVersion;
+        if (currentVersion == 1)
         {
             MigrateVersion1To2(document);
+            migrated = true;
+            currentVersion = 2;
+        }
+
+        if (currentVersion == 2)
+        {
+            MigrateVersion2To3(document);
             migrated = true;
         }
 
@@ -108,5 +116,47 @@ public static class SettingsMigrator
             updates["automaticDownload"] ??= false;
             updates["installOnExit"] ??= false;
         }
+    }
+
+    private static void MigrateVersion2To3(JsonObject document)
+    {
+        if (document["email"] is not JsonObject email)
+        {
+            return;
+        }
+
+        var legacyProvider = email["provider"]?.GetValue<string?>();
+        var migratedProvider = legacyProvider switch
+        {
+            "GoogleOAuth" => nameof(EmailProviderMode.Gmail),
+            "MicrosoftOAuth" => nameof(EmailProviderMode.Microsoft365),
+            "GenericSmtp" => nameof(EmailProviderMode.OtherSmtp),
+            "Disabled" => nameof(EmailProviderMode.Off),
+            _ => nameof(EmailProviderMode.Off),
+        };
+        var obsoleteReferences = new JsonArray();
+        if (legacyProvider is "GoogleOAuth" or "MicrosoftOAuth")
+        {
+            if (email["oauthTokenReference"]?.GetValue<string?>() is { Length: > 0 } tokenReference)
+            {
+                obsoleteReferences.Add(tokenReference);
+            }
+
+            if (email["credentialReference"]?.GetValue<string?>() is { Length: > 0 } credentialReference)
+            {
+                obsoleteReferences.Add(credentialReference);
+            }
+
+            email["oauthTokenReference"] = null;
+            email["oauthRegistrationId"] = null;
+            email["oauthClientId"] = null;
+            email["credentialReference"] = null;
+        }
+
+        email["provider"] = migratedProvider;
+        email["enabled"] = false;
+        email["connectedAddress"] = null;
+        email["recipients"] = new JsonArray();
+        email["obsoleteSecretReferences"] = obsoleteReferences;
     }
 }

@@ -22,7 +22,6 @@ public sealed class WindowsAccessibilityContractTests
         var settings = ReadSource("src", "CodexUsageMonitor.App", "Views", "SettingsWindow.xaml");
         var onboarding = ReadSource("src", "CodexUsageMonitor.App", "Views", "OnboardingWindow.xaml");
         var reset = ReadSource("src", "CodexUsageMonitor.App", "Views", "ResetCreditConfirmationDialog.xaml");
-        var oauth = ReadSource("src", "CodexUsageMonitor.App", "Views", "MicrosoftDeviceCodeDialog.xaml");
         var widget = ReadSource("src", "CodexUsageMonitor.App", "Views", "WidgetWindow.xaml");
 
         foreach (var accessibleName in new[]
@@ -44,7 +43,7 @@ public sealed class WindowsAccessibilityContractTests
         StringAssert.Contains(onboarding, "ResizeMode=\"CanResizeWithGrip\"");
         StringAssert.Contains(onboarding, "AutomationProperties.HeadingLevel=\"Level1\"");
         StringAssert.Contains(reset, "VerticalScrollBarVisibility=\"Auto\"");
-        StringAssert.Contains(oauth, "VerticalScrollBarVisibility=\"Auto\"");
+        StringAssert.Contains(settings, "Privacy &amp; security");
         StringAssert.Contains(widget, "<KeyBinding Key=\"F5\"");
         StringAssert.Contains(widget, "AutomationProperties.LiveSetting=\"Polite\"");
         Assert.AreEqual(3, Count(widget, "Value=\"{Binding RemainingPercent, Mode=OneWay}\""));

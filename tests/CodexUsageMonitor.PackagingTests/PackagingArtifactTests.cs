@@ -38,6 +38,27 @@ public sealed class PackagingArtifactTests
     }
 
     [TestMethod]
+    public void PortableDistributionDeclaresLocalDataAndRemovalContract()
+    {
+        var root = RepositoryRoot();
+        var packagingScript = File.ReadAllText(Path.Combine(root, "eng", "package-portable.ps1"));
+        var verifierScript = File.ReadAllText(Path.Combine(root, "eng", "verify-release.ps1"));
+        var portableReadme = File.ReadAllText(Path.Combine(root, "packaging", "portable", "README.md"));
+        var install = File.ReadAllText(Path.Combine(root, "packaging", "portable", "INSTALL.txt"));
+        var uninstall = File.ReadAllText(Path.Combine(root, "packaging", "portable", "UNINSTALL.txt"));
+
+        StringAssert.Contains(packagingScript, "portable.mode");
+        StringAssert.Contains(packagingScript, "INSTALL.txt");
+        StringAssert.Contains(packagingScript, "UNINSTALL.txt");
+        StringAssert.Contains(packagingScript, "Update payloads must not carry it");
+        StringAssert.Contains(verifierScript, "Assert-PortableArchive");
+        StringAssert.Contains(verifierScript, "CodexUsageMonitor/portable.mode");
+        StringAssert.Contains(portableReadme, "data` directory");
+        StringAssert.Contains(install, "portable.mode");
+        StringAssert.Contains(uninstall, "Delete the extracted CodexUsageMonitor folder");
+    }
+
+    [TestMethod]
     public async Task UpdateArchiveVerifierAcceptsExactManifestAndRejectsUnsafePath()
     {
         using var fixture = new TemporaryDirectory();

@@ -12,6 +12,9 @@ public sealed class WidgetWindowInterop : IDisposable
     private const long WsExToolWindow = 0x00000080L;
     private const long WsExNoActivate = 0x08000000L;
     private const int WmHotKey = 0x0312;
+    private const int WmSettingChange = 0x001A;
+    private const int WmDisplayChange = 0x007E;
+    private const int WmDpiChanged = 0x02E0;
     private const int RecoveryHotKeyId = 0x43554D;
     private const uint ModControl = 0x0002;
     private const uint ModShift = 0x0004;
@@ -32,6 +35,7 @@ public sealed class WidgetWindowInterop : IDisposable
     }
 
     public event EventHandler? RecoveryRequested;
+    public event EventHandler? WorkAreaChanged;
 
     public bool IsClickThrough { get; private set; }
 
@@ -107,6 +111,10 @@ public sealed class WidgetWindowInterop : IDisposable
             }
 
             RecoveryRequested?.Invoke(this, EventArgs.Empty);
+        }
+        else if (message is WmSettingChange or WmDisplayChange or WmDpiChanged)
+        {
+            WorkAreaChanged?.Invoke(this, EventArgs.Empty);
         }
 
         return nint.Zero;

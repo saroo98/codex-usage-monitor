@@ -6,20 +6,12 @@ namespace CodexUsageMonitor.Email.Templates;
 
 public static class UsageEmailTemplate
 {
-    public static EmailMessage Create(
+    public static SelfNotification Create(
         UsageTransition transition,
-        string from,
-        IReadOnlyList<string> to,
         bool includeAccountLabel,
         string? accountLabel)
     {
         ArgumentNullException.ThrowIfNull(transition);
-        ArgumentException.ThrowIfNullOrWhiteSpace(from);
-        ArgumentNullException.ThrowIfNull(to);
-        if (to.Count is <= 0 or > 16 || to.Any(static address => string.IsNullOrWhiteSpace(address)))
-        {
-            throw new ArgumentException("Email templates require between one and sixteen recipients.", nameof(to));
-        }
         var limit = transition.Current?.Label ?? "Selected Codex limit";
         var remaining = transition.Current?.RemainingPercent;
         var eventText = transition.Identity.EventType switch
@@ -59,6 +51,6 @@ public static class UsageEmailTemplate
             </body>
             </html>
             """;
-        return new EmailMessage(from.Trim(), to.Select(static address => address.Trim()).ToArray(), subject, plain, html, transition.Identity.Value);
+        return new SelfNotification(subject, plain, html, transition.Identity.Value);
     }
 }

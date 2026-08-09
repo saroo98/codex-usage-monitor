@@ -139,6 +139,7 @@ def main() -> int:
         Path("index.html"), Path("privacy.html"), Path("support.html"),
         Path("code-signing.html"), Path("404.html"), Path("styles.css"),
         Path("experience.js"), Path("favicon.svg"), Path(".nojekyll"),
+        Path("logo.svg"),
     }
     present_files = {
         path.relative_to(SITE)
@@ -170,7 +171,7 @@ def main() -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 1
-    print(f"Website verification passed for {len(list(SITE.glob('*.html')))} pages and 5 experience checks.")
+    print(f"Website verification passed for {len(list(SITE.glob('*.html')))} pages and 8 experience checks.")
     return 0
 
 

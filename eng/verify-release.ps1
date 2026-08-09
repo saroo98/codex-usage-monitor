@@ -36,6 +36,29 @@ function Find-WindowsSdkTool([string]$Name) {
     return $candidate
 }
 
+function Assert-PortableArchive([string]$ArchivePath) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::OpenRead($ArchivePath)
+    try {
+        $names = @($archive.Entries | ForEach-Object FullName)
+        foreach ($requiredName in @(
+            'CodexUsageMonitor/CodexUsageMonitor.exe',
+            'CodexUsageMonitor/CodexUsageMonitor.UpdaterHost.exe',
+            'CodexUsageMonitor/README.md',
+            'CodexUsageMonitor/INSTALL.txt',
+            'CodexUsageMonitor/UNINSTALL.txt',
+            'CodexUsageMonitor/portable.mode')) {
+            if ($names -notcontains $requiredName) { throw "Portable archive is missing required entry: $requiredName" }
+        }
+        if (@($names | Where-Object { $_ -match '(^|/)\.\.(/|$)|(^|/)[A-Za-z]:/' }).Count -gt 0) {
+            throw "Portable archive contains an unsafe path: $ArchivePath"
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 $required = @('SHA256SUMS.txt','BUILD-METADATA.json','THIRD-PARTY-NOTICES.md','LICENSE.txt','bom.json','update-manifest.json',"CodexUsageMonitor-$Version-source.zip")
 foreach ($architecture in $Architectures) {
     $rid = "win-$architecture"
@@ -75,6 +98,7 @@ foreach ($architecture in $Architectures) {
         $archive = Join-Path $root "CodexUsageMonitor-$Version-$rid-portable-$flavor.zip"
         & python tools/deterministic_zip.py --verify $archive
         if ($LASTEXITCODE -ne 0) { throw "Portable archive verification failed: $archive" }
+        Assert-PortableArchive $archive
     }
 }
 foreach ($archiveName in @("CodexUsageMonitor-$Version-source.zip") +

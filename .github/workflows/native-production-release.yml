@@ -36,7 +36,7 @@ env:
 jobs:
   stage:
     name: Build signed production artifact set
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 120
     environment: native-production-release
 
@@ -84,6 +84,9 @@ jobs:
           PACKAGE_PUBLISHER: ${{ inputs.publisher }}
           SIGNING_CERTIFICATE_PATH: ${{ steps.signing.outputs.certificate }}
           UPDATE_PRIVATE_KEY_PATH: ${{ steps.signing.outputs.update_key }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_CLIENT_ID }}
+          MICROSOFT_OAUTH_CLIENT_ID: ${{ vars.MICROSOFT_OAUTH_CLIENT_ID }}
+          MICROSOFT_OAUTH_TENANT: ${{ vars.MICROSOFT_OAUTH_TENANT }}
         run: |
           $ErrorActionPreference = 'Stop'
           $password = ConvertTo-SecureString $env:SIGNING_CERTIFICATE_PASSWORD -AsPlainText -Force
@@ -102,6 +105,9 @@ jobs:
             -FeedBaseUri $env:FEED_BASE_URI `
             -ReleaseNotesUri $env:RELEASE_NOTES_URI `
             -PublisherThumbprints $thumbprints `
+            -GoogleOAuthClientId $env:GOOGLE_OAUTH_CLIENT_ID `
+            -MicrosoftOAuthClientId $env:MICROSOFT_OAUTH_CLIENT_ID `
+            -MicrosoftOAuthTenant $env:MICROSOFT_OAUTH_TENANT `
             -Production
 
       - name: Remove materialized signing inputs

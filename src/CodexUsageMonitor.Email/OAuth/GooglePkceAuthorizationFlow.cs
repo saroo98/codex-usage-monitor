@@ -25,7 +25,6 @@ public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
 
     public async Task<OAuthTokenSet> ConnectAsync(
         string clientId,
-        string? clientSecret,
         string tokenStoreKey,
         IReadOnlyList<string> scopes,
         TimeSpan timeout,
@@ -82,11 +81,6 @@ public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
             ["grant_type"] = "authorization_code",
             ["redirect_uri"] = redirectUri.AbsoluteUri,
         };
-        if (!string.IsNullOrWhiteSpace(clientSecret))
-        {
-            fields["client_secret"] = clientSecret;
-        }
-
         using var tokenResponse = await OAuthHttpProtocol.PostFormAsync(
             _httpClient,
             TokenEndpoint,
@@ -97,7 +91,8 @@ public sealed class GooglePkceAuthorizationFlow : IGooglePkceAuthorizationFlow
         return tokens;
     }
 
-    public static IReadOnlyList<string> SmtpScopes { get; } = ["https://mail.google.com/"];
+    public static IReadOnlyList<string> GmailApiScopes { get; } =
+        ["openid", "email", "https://www.googleapis.com/auth/gmail.send"];
 
     private static Uri BuildAuthorizationUri(
         string clientId,
