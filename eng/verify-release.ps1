@@ -205,6 +205,14 @@ foreach ($archiveName in $containerNames) {
 $sbom = Get-Content -LiteralPath (Join-Path $root 'bom.json') -Raw | ConvertFrom-Json
 if ($sbom.bomFormat -ne 'CycloneDX' -or $sbom.metadata.component.version -ne $Version) { throw 'SBOM metadata is invalid or version-inconsistent.' }
 if ($isPublicUnsigned) {
+    $expectedSbomSerialNumber = Get-ReleaseSbomSerialNumber `
+        -Repository $ExpectedRepository -Version $Version -Commit ([string]$metadata.commit)
+    $serialNumberProperty = $sbom.PSObject.Properties['serialNumber']
+    $actualSbomSerialNumber = if ($null -eq $serialNumberProperty) { $null } else { [string]$serialNumberProperty.Value }
+    if ([string]::IsNullOrWhiteSpace([string]$sbom.specVersion) -or
+        $actualSbomSerialNumber -cne $expectedSbomSerialNumber) {
+        throw 'SBOM serial number does not match the deterministic repository, version, and commit identity.'
+    }
     $requiredPackageNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($lockFile in Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot 'src') -Recurse -Filter packages.lock.json -File) {
         $lock = Get-Content -LiteralPath $lockFile.FullName -Raw | ConvertFrom-Json

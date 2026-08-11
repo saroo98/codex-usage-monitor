@@ -29,6 +29,7 @@ Set-StrictMode -Version Latest
 $RepositoryRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepositoryRoot
 . "$PSScriptRoot/ProductVersion.ps1"
+Import-Module "$PSScriptRoot/ReleaseVerification.psm1" -Force
 
 $centralVersion = Get-ProductVersion -RepositoryRoot $RepositoryRoot
 if ($Version -ne $centralVersion) { throw "Requested version $Version does not match product version $centralVersion." }
@@ -198,6 +199,21 @@ dotnet tool restore | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Local tool restore failed.' }
 & dotnet CycloneDX CodexUsageMonitor.slnx --output $releaseRoot --filename bom.json --output-format Json --exclude-test-projects --set-name CodexUsageMonitor --set-version $Version --no-serial-number
 if ($LASTEXITCODE -ne 0) { throw 'SBOM generation failed.' }
+if ($isPublicUnsigned) {
+    $sbomPath = Join-Path $releaseRoot 'bom.json'
+    $sbom = Get-Content -LiteralPath $sbomPath -Raw | ConvertFrom-Json
+    if ($sbom.bomFormat -cne 'CycloneDX' -or [string]::IsNullOrWhiteSpace([string]$sbom.specVersion)) {
+        throw 'Generated SBOM does not match the required CycloneDX schema identity.'
+    }
+    if ($sbom.PSObject.Properties.Name -contains 'serialNumber') {
+        throw 'CycloneDX generated an unexpected nondeterministic serial number.'
+    }
+    $commit = (& git rev-parse HEAD).Trim()
+    $sbom | Add-Member -NotePropertyName serialNumber -NotePropertyValue (
+        Get-ReleaseSbomSerialNumber -Repository $Repository -Version $Version -Commit $commit)
+    $sbomJson = (($sbom | ConvertTo-Json -Depth 100) -replace "`r`n", "`n") + "`n"
+    [IO.File]::WriteAllText($sbomPath, $sbomJson, [Text.UTF8Encoding]::new($false))
+}
 
 Copy-Item -LiteralPath LICENSE -Destination (Join-Path $releaseRoot 'LICENSE.txt')
 Copy-Item -LiteralPath THIRD-PARTY-NOTICES.md -Destination (Join-Path $releaseRoot 'THIRD-PARTY-NOTICES.md')
