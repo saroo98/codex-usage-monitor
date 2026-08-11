@@ -201,13 +201,17 @@ if ($LASTEXITCODE -ne 0) { throw 'Local tool restore failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'SBOM generation failed.' }
 if ($isPublicUnsigned) {
     $sbomPath = Join-Path $releaseRoot 'bom.json'
-    $sbom = Get-Content -LiteralPath $sbomPath -Raw | ConvertFrom-Json
+    $sbom = Get-Content -LiteralPath $sbomPath -Raw | ConvertFrom-Json -DateKind String
     if ($sbom.bomFormat -cne 'CycloneDX' -or [string]::IsNullOrWhiteSpace([string]$sbom.specVersion)) {
         throw 'Generated SBOM does not match the required CycloneDX schema identity.'
     }
     if ($sbom.PSObject.Properties.Name -contains 'serialNumber') {
         throw 'CycloneDX generated an unexpected nondeterministic serial number.'
     }
+    if ($null -eq $sbom.metadata -or $null -eq $sbom.metadata.PSObject.Properties['timestamp']) {
+        throw 'Generated SBOM does not contain the required CycloneDX metadata timestamp.'
+    }
+    $sbom.metadata.timestamp = $publishedAt.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture)
     $commit = (& git rev-parse HEAD).Trim()
     $sbom | Add-Member -NotePropertyName serialNumber -NotePropertyValue (
         Get-ReleaseSbomSerialNumber -Repository $Repository -Version $Version -Commit $commit)

@@ -202,7 +202,7 @@ foreach ($archiveName in $containerNames) {
     if ($LASTEXITCODE -ne 0) { throw "Release container verification failed: $archiveName" }
 }
 
-$sbom = Get-Content -LiteralPath (Join-Path $root 'bom.json') -Raw | ConvertFrom-Json
+$sbom = Get-Content -LiteralPath (Join-Path $root 'bom.json') -Raw | ConvertFrom-Json -DateKind String
 if ($sbom.bomFormat -ne 'CycloneDX' -or $sbom.metadata.component.version -ne $Version) { throw 'SBOM metadata is invalid or version-inconsistent.' }
 if ($isPublicUnsigned) {
     $expectedSbomSerialNumber = Get-ReleaseSbomSerialNumber `
@@ -212,6 +212,23 @@ if ($isPublicUnsigned) {
     if ([string]::IsNullOrWhiteSpace([string]$sbom.specVersion) -or
         $actualSbomSerialNumber -cne $expectedSbomSerialNumber) {
         throw 'SBOM serial number does not match the deterministic repository, version, and commit identity.'
+    }
+    $generatedAt = [DateTimeOffset]::Parse(
+        [string]$metadata.generatedAtUtc,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind)
+    $expectedSbomTimestamp = $generatedAt.ToUniversalTime().ToString(
+        "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        [Globalization.CultureInfo]::InvariantCulture)
+    $sbomMetadataProperty = $sbom.PSObject.Properties['metadata']
+    $timestampProperty = if ($null -eq $sbomMetadataProperty) {
+        $null
+    } else {
+        $sbomMetadataProperty.Value.PSObject.Properties['timestamp']
+    }
+    $actualSbomTimestamp = if ($null -eq $timestampProperty) { $null } else { [string]$timestampProperty.Value }
+    if ($actualSbomTimestamp -cne $expectedSbomTimestamp) {
+        throw 'SBOM timestamp does not match the deterministic release generation time.'
     }
     $requiredPackageNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($lockFile in Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot 'src') -Recurse -Filter packages.lock.json -File) {
