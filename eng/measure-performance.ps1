@@ -13,7 +13,8 @@ param(
     [int]$ColdStartIterations = 3,
     [ValidateRange(5, 100)]
     [int]$ActivationIterations = 20,
-    [string]$ValidationUpdatePublicKeyBase64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    # NON-PRODUCTION TEST KEY. Production release preflight must reject this value.
+    [string]$ValidationUpdatePublicKeyBase64 = '11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=',
     [switch]$Enforce
 )
 
