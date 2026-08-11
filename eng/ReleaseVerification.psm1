@@ -34,6 +34,36 @@ function ConvertTo-CanonicalCommit {
     return $Value.ToLowerInvariant()
 }
 
+function Get-ReleaseSbomSerialNumber {
+    param(
+        [Parameter(Mandatory)]
+        [ValidatePattern('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')]
+        [string]$Repository,
+        [Parameter(Mandatory)]
+        [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$')]
+        [string]$Version,
+        [Parameter(Mandatory)]
+        [string]$Commit
+    )
+
+    $canonicalCommit = ConvertTo-CanonicalCommit $Commit
+    $seedBytes = [Text.Encoding]::UTF8.GetBytes("$Repository|$Version|$canonicalCommit")
+    $hashBytes = $null
+    $uuidBytes = $null
+    try {
+        $hashBytes = [Security.Cryptography.SHA256]::HashData($seedBytes)
+        $uuidBytes = [byte[]]$hashBytes[0..15]
+        $uuidBytes[7] = ($uuidBytes[7] -band 0x0f) -bor 0x50
+        $uuidBytes[8] = ($uuidBytes[8] -band 0x3f) -bor 0x80
+        return "urn:uuid:$([Guid]::new($uuidBytes).ToString('D'))"
+    }
+    finally {
+        if ($uuidBytes) { [Security.Cryptography.CryptographicOperations]::ZeroMemory($uuidBytes) }
+        if ($hashBytes) { [Security.Cryptography.CryptographicOperations]::ZeroMemory($hashBytes) }
+        if ($seedBytes) { [Security.Cryptography.CryptographicOperations]::ZeroMemory($seedBytes) }
+    }
+}
+
 function Get-ExactJsonObject {
     param(
         [Parameter(Mandatory)][Text.Json.JsonElement]$Element,
@@ -374,4 +404,4 @@ function Test-ReleaseArchive {
     }
 }
 
-Export-ModuleMember -Function Assert-ReleaseHttpsUri,Assert-ReleasePin,ConvertTo-CanonicalCommit,Read-ReleaseBuildMetadata,New-ReleaseVerificationReport,Assert-MsixReleaseIdentity,Assert-MsixBundleIdentity,Assert-ExtractedUpdateManifest,Test-ReleaseArchive
+Export-ModuleMember -Function Assert-ReleaseHttpsUri,Assert-ReleasePin,ConvertTo-CanonicalCommit,Get-ReleaseSbomSerialNumber,Read-ReleaseBuildMetadata,New-ReleaseVerificationReport,Assert-MsixReleaseIdentity,Assert-MsixBundleIdentity,Assert-ExtractedUpdateManifest,Test-ReleaseArchive

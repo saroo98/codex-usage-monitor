@@ -568,6 +568,31 @@ public sealed class PackagingArtifactTests
     }
 
     [TestMethod]
+    public async Task PublicUnsignedVerifierRejectsAnSbomWithoutDeterministicAttestationIdentity()
+    {
+        using var fixture = new TemporaryDirectory();
+        await CreatePublicUnsignedReleaseFixtureAsync(fixture.Path);
+        var bomPath = Path.Combine(fixture.Path, "bom.json");
+        var bom = JsonNode.Parse(await File.ReadAllTextAsync(bomPath))!.AsObject();
+        bom.Remove("serialNumber");
+        await File.WriteAllTextAsync(bomPath, bom.ToJsonString(), new UTF8Encoding(false));
+        var bomHash = Convert.ToHexStringLower(SHA256.HashData(await File.ReadAllBytesAsync(bomPath)));
+        var checksumPath = Path.Combine(fixture.Path, "SHA256SUMS.txt");
+        var inventory = (await File.ReadAllLinesAsync(checksumPath))
+            .Select(line => line.EndsWith(" *bom.json", StringComparison.Ordinal)
+                ? $"{bomHash} *bom.json"
+                : line)
+            .ToArray();
+        await File.WriteAllLinesAsync(checksumPath, inventory, new UTF8Encoding(false));
+        var command = $"-NoProfile -Command \"& './eng/verify-release.ps1' -ReleaseRoot '{fixture.Path}' -Version 6.0.0 -Architectures @('x64','arm64') -ReleaseMode PublicUnsigned -ExpectedRepository saroo98/codex-usage-monitor -UpdateTrustAnchor {Rfc8032TrustAnchor}\"";
+
+        var rejected = await RunAsync("pwsh", command, expectSuccess: false);
+
+        Assert.AreNotEqual(0, rejected.ExitCode);
+        StringAssert.Contains(rejected.Error + rejected.Output, "SBOM serial number does not match");
+    }
+
+    [TestMethod]
     public void ProductAndPackagingTemplatesUseCentralVersionContract()
     {
         var root = RepositoryRoot();
@@ -689,6 +714,8 @@ public sealed class PackagingArtifactTests
             JsonSerializer.Serialize(new
             {
                 bomFormat = "CycloneDX",
+                specVersion = "1.7",
+                serialNumber = CreateReleaseSbomSerialNumber("saroo98/codex-usage-monitor", version, head),
                 metadata = new { component = new { version } },
                 components = GetDirectSourcePackageNames().Select(name => new { name }).ToArray(),
             }),
@@ -780,6 +807,16 @@ public sealed class PackagingArtifactTests
         }
 
         return names.OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static string CreateReleaseSbomSerialNumber(string repository, string version, string commit)
+    {
+        var seedBytes = Encoding.UTF8.GetBytes($"{repository}|{version}|{commit.ToLowerInvariant()}");
+        var hashBytes = SHA256.HashData(seedBytes);
+        var uuidBytes = hashBytes[..16];
+        uuidBytes[7] = (byte)((uuidBytes[7] & 0x0f) | 0x50);
+        uuidBytes[8] = (byte)((uuidBytes[8] & 0x3f) | 0x80);
+        return $"urn:uuid:{new Guid(uuidBytes):D}";
     }
 
     private static void CreatePortableArchive(string path)
