@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AppInstaller
-  xmlns="http://schemas.microsoft.com/appx/appinstaller/2021"
+  xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
   Uri="@@APPINSTALLER_URI@@"
   Version="@@PACKAGE_VERSION@@">
   <MainBundle
@@ -9,7 +9,7 @@
     Version="@@PACKAGE_VERSION@@"
     Uri="@@BUNDLE_URI@@" />
   <UpdateSettings>
-    <OnLaunch HoursBetweenUpdateChecks="24" ShowPrompt="true" UpdateBlocksActivation="false" />
+    <OnLaunch HoursBetweenUpdateChecks="24" />
     <AutomaticBackgroundTask />
   </UpdateSettings>
 </AppInstaller>

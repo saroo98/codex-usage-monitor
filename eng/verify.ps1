@@ -6,7 +6,9 @@ param(
     [string]$Architecture = 'All',
     [switch]$SkipUi,
     [switch]$SkipPackaging,
-    [string]$ValidationUpdatePublicKeyBase64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+    # NON-PRODUCTION TEST KEY. Production release preflight must reject this value.
+    [string]$ValidationUpdatePublicKeyBase64 = '11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=',
+    [string]$TestResultsDirectory = 'artifacts/TestResults'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,10 +65,10 @@ foreach ($arch in $architectures) {
 }
 
 foreach ($suite in @('Unit','Contract','Integration','Migration','Performance')) {
-    & "$PSScriptRoot/test.ps1" -Suite $suite -Configuration $Configuration -NoBuild
+    & "$PSScriptRoot/test.ps1" -Suite $suite -Configuration $Configuration -ResultsDirectory $TestResultsDirectory -NoBuild
 }
-if (-not $SkipPackaging) { & "$PSScriptRoot/test.ps1" -Suite Packaging -Configuration $Configuration -NoBuild }
-if (-not $SkipUi) { & "$PSScriptRoot/test.ps1" -Suite Ui -Configuration $Configuration -NoBuild }
+if (-not $SkipPackaging) { & "$PSScriptRoot/test.ps1" -Suite Packaging -Configuration $Configuration -ResultsDirectory $TestResultsDirectory -NoBuild }
+if (-not $SkipUi) { & "$PSScriptRoot/test.ps1" -Suite Ui -Configuration $Configuration -ResultsDirectory $TestResultsDirectory -NoBuild }
 
 & dotnet list CodexUsageMonitor.slnx package --vulnerable --include-transitive
 if ($LASTEXITCODE -ne 0) { throw 'Dependency vulnerability scan failed.' }

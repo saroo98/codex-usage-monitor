@@ -7,6 +7,7 @@ param(
     [string]$Configuration = 'Release',
     [ValidateSet('x64','arm64','AnyCPU')]
     [string]$Architecture = 'AnyCPU',
+    [string]$ResultsDirectory = 'artifacts/TestResults',
     [switch]$NoBuild
 )
 
@@ -39,7 +40,7 @@ foreach ($entry in $selected) {
         '--configuration', $Configuration,
         '--report-trx',
         '--report-trx-filename', "$($entry.Key).trx",
-        '--results-directory', 'artifacts/TestResults',
+        '--results-directory', $ResultsDirectory,
         '--no-ansi',
         '--no-progress'
     )

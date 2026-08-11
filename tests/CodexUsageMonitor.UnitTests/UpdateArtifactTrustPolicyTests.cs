@@ -89,6 +89,39 @@ public sealed class UpdateArtifactTrustPolicyTests
     }
 
     [TestMethod]
+    public async Task DevelopmentBuildCannotEnableProjectManifestModeAndHashVerificationRunsFirst()
+    {
+        using var fixture = await TrustFixture.CreateAsync();
+        var verifier = new RecordingSignatureVerifier(static _ => false);
+        var policy = new UpdateArtifactTrustPolicy(verifier, UpdateTrustPolicyOptions.Production);
+        var hostSha256 = await UpdateFileIntegrity.ComputeSha256Async(
+            fixture.HostPath,
+            CancellationToken.None);
+        var projectManifestMode = Enum.Parse<UpdateArtifactTrustMode>("ProjectManifest");
+
+        var buildFailure = await Assert.ThrowsExactlyAsync<CryptographicException>(() =>
+            policy.VerifyPreparedHostAsync(
+                fixture.HostPath,
+                hostSha256,
+                [],
+                projectManifestMode,
+                CancellationToken.None));
+
+        StringAssert.Contains(buildFailure.Message, "not permitted by this build");
+        Assert.AreEqual(0, verifier.Paths.Count);
+
+        await File.AppendAllTextAsync(fixture.HostPath, "tampered");
+        var integrityFailure = await Assert.ThrowsExactlyAsync<CryptographicException>(() =>
+            policy.VerifyPreparedHostAsync(
+                fixture.HostPath,
+                hostSha256,
+                [],
+                projectManifestMode,
+                CancellationToken.None));
+        StringAssert.Contains(integrityFailure.Message, "integrity verification");
+    }
+
+    [TestMethod]
     public void DevelopmentEnvironmentOptInRequiresExactOne()
     {
         const string variable = UpdateTrustPolicyOptions.AllowUnsignedDevelopmentArtifactsEnvironmentVariable;
@@ -118,6 +151,44 @@ public sealed class UpdateArtifactTrustPolicyTests
             new RecordingSignatureVerifier(static _ => false),
             UpdateTrustPolicyOptions.Production);
 
+        await Assert.ThrowsExactlyAsync<CryptographicException>(() =>
+            policy.VerifyStagedExecutablesAsync(
+                fixture.ApplicationPath,
+                fixture.HostPath,
+                [],
+                fixture.Manifest,
+                CancellationToken.None));
+    }
+
+    [TestMethod]
+    [TestCategory("PublicUnsignedBuild")]
+    public async Task PublicUnsignedBuildSelectsProjectManifestAndRejectsChangedExecutableBytes()
+    {
+        var buildFlavor = typeof(UpdateArtifactTrustPolicy).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), inherit: false)
+            .Cast<System.Reflection.AssemblyMetadataAttribute>()
+            .Single(attribute => string.Equals(attribute.Key, "UpdateBuildFlavor", StringComparison.Ordinal))
+            .Value;
+        if (!string.Equals(buildFlavor, "PublicUnsigned", StringComparison.Ordinal))
+        {
+            Assert.Inconclusive("This contract runs only when MSBuild sets UpdateBuildFlavor=PublicUnsigned.");
+        }
+
+        using var fixture = await TrustFixture.CreateAsync();
+        var verifier = new RecordingSignatureVerifier(static _ => false);
+        var policy = new UpdateArtifactTrustPolicy(verifier, UpdateTrustPolicyOptions.Production);
+
+        var mode = await policy.VerifyStagedExecutablesAsync(
+            fixture.ApplicationPath,
+            fixture.HostPath,
+            [],
+            fixture.Manifest,
+            CancellationToken.None);
+
+        Assert.AreEqual(UpdateArtifactTrustMode.ProjectManifest, mode);
+        Assert.AreEqual(0, verifier.Paths.Count);
+
+        await File.AppendAllTextAsync(fixture.ApplicationPath, "tampered");
         await Assert.ThrowsExactlyAsync<CryptographicException>(() =>
             policy.VerifyStagedExecutablesAsync(
                 fixture.ApplicationPath,

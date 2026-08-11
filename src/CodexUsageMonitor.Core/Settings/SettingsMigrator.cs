@@ -12,6 +12,8 @@ public sealed record SettingsMigrationResult(
 
 public static class SettingsMigrator
 {
+    private const string InvalidManifestUriSentinel = "invalid-manifest-uri";
+
     public static SettingsMigrationResult ReadAndMigrate(JsonElement root)
     {
         if (root.ValueKind is not JsonValueKind.Object)
@@ -60,9 +62,17 @@ public static class SettingsMigrator
         {
             MigrateVersion2To3(document);
             migrated = true;
+            currentVersion = 3;
+        }
+
+        if (currentVersion == 3)
+        {
+            MigrateVersion3To4(document);
+            migrated = true;
         }
 
         document["schemaVersion"] = AppSettings.CurrentSchemaVersion;
+        SanitizeManifestUriForDeserialization(document);
         try
         {
             var settings = document.Deserialize(SettingsJson.TypeInfo);
@@ -158,5 +168,40 @@ public static class SettingsMigrator
         email["connectedAddress"] = null;
         email["recipients"] = new JsonArray();
         email["obsoleteSecretReferences"] = obsoleteReferences;
+    }
+
+    private static void MigrateVersion3To4(JsonObject document)
+    {
+        if (!document.TryGetPropertyValue("updates", out var updatesNode) || updatesNode is null)
+        {
+            document["updates"] = new JsonObject
+            {
+                ["manifestUri"] = UpdateSettings.DefaultManifestUri.AbsoluteUri,
+            };
+            return;
+        }
+
+        if (updatesNode is JsonObject updates &&
+            (!updates.TryGetPropertyValue("manifestUri", out var manifestUriNode) || manifestUriNode is null))
+        {
+            updates["manifestUri"] = UpdateSettings.DefaultManifestUri.AbsoluteUri;
+        }
+    }
+
+    private static void SanitizeManifestUriForDeserialization(JsonObject document)
+    {
+        if (document["updates"] is not JsonObject updates ||
+            !updates.TryGetPropertyValue("manifestUri", out var manifestUriNode) ||
+            manifestUriNode is null)
+        {
+            return;
+        }
+
+        if (manifestUriNode is not JsonValue value ||
+            !value.TryGetValue<string>(out var manifestUriText) ||
+            !Uri.TryCreate(manifestUriText, UriKind.RelativeOrAbsolute, out _))
+        {
+            updates["manifestUri"] = InvalidManifestUriSentinel;
+        }
     }
 }

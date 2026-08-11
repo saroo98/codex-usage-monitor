@@ -1,5 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using CodexUsageMonitor.Core.Settings;
+using CodexUsageMonitor.Persistence.Settings;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CodexUsageMonitor.UnitTests;
 
@@ -37,7 +40,7 @@ public sealed class SettingsMigrationTests
         Assert.IsTrue(migration.Migrated);
         Assert.AreEqual(1, migration.SourceSchemaVersion);
         Assert.IsTrue(result.CanPersist);
-        Assert.AreEqual(3, result.Settings.SchemaVersion);
+        Assert.AreEqual(4, result.Settings.SchemaVersion);
         Assert.AreEqual(0.42, result.Settings.Widget.Opacity, 0.001);
         Assert.AreEqual(ResetTimeDisplayMode.Hidden, result.Settings.Widget.ResetTimeDisplay);
         Assert.IsFalse(result.Settings.Widget.Topmost);
@@ -59,6 +62,151 @@ public sealed class SettingsMigrationTests
         Assert.IsNull(migration.Settings);
         Assert.IsFalse(migration.CanPersist);
         Assert.AreEqual("settings.future_schema", migration.SafeErrorCode);
+    }
+
+    [TestMethod]
+    [DataRow("{\"automaticChecks\":true}")]
+    [DataRow("{\"automaticChecks\":true,\"manifestUri\":null}")]
+    public void MigratesSchemaThreeMissingOrNullManifestUriToOfficialDefault(string updatesJson)
+    {
+        using var document = JsonDocument.Parse($$"""
+        {
+          "schemaVersion": 3,
+          "updates": {{updatesJson}}
+        }
+        """);
+
+        var migration = SettingsMigrator.ReadAndMigrate(document.RootElement);
+
+        Assert.IsTrue(migration.Migrated);
+        Assert.AreEqual(3, migration.SourceSchemaVersion);
+        Assert.AreEqual(4, migration.Settings?.SchemaVersion);
+        Assert.AreEqual(
+            "https://github.com/saroo98/codex-usage-monitor/releases/latest/download/update-manifest.json",
+            migration.Settings?.Updates.ManifestUri?.AbsoluteUri);
+    }
+
+    [TestMethod]
+    public void MigratesSchemaThreeWithoutReplacingValidCustomManifestUri()
+    {
+        const string json = """
+        {
+          "schemaVersion": 3,
+          "updates": {
+            "automaticChecks": true,
+            "manifestUri": "https://updates.example.test/custom/manifest.json?channel=stable"
+          }
+        }
+        """;
+        using var document = JsonDocument.Parse(json);
+
+        var migration = SettingsMigrator.ReadAndMigrate(document.RootElement);
+        var result = SettingsValidation.Normalize(new AppSettings { Updates = migration.Settings!.Updates });
+
+        Assert.IsTrue(migration.Migrated);
+        Assert.AreEqual(
+            "https://updates.example.test/custom/manifest.json?channel=stable",
+            result.Settings.Updates.ManifestUri?.AbsoluteUri);
+        Assert.IsFalse(result.Issues.Any(issue => issue.Path == "updates.manifestUri"));
+    }
+
+    [TestMethod]
+    [DataRow("http://updates.example.test/manifest.json")]
+    [DataRow("https://user:password@updates.example.test/manifest.json")]
+    [DataRow("https://updates.example.test/manifest.json#release")]
+    [DataRow("not-a-valid-absolute-uri")]
+    public void InvalidManifestUriDefaultsWithOnlyANonSensitiveIssueCode(string configuredValue)
+    {
+        var settings = new AppSettings
+        {
+            Updates = new UpdateSettings
+            {
+                ManifestUri = new Uri(configuredValue, UriKind.RelativeOrAbsolute),
+            },
+        };
+
+        var result = SettingsValidation.Normalize(settings);
+
+        Assert.AreEqual(
+            "https://github.com/saroo98/codex-usage-monitor/releases/latest/download/update-manifest.json",
+            result.Settings.Updates.ManifestUri?.AbsoluteUri);
+        CollectionAssert.Contains(
+            result.Issues.ToArray(),
+            new SettingsValidationIssue("updates.manifestUri", "settings.update_manifest_defaulted"));
+        Assert.IsFalse(result.Issues.Any(issue => issue.Code.Contains(configuredValue, StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    [DataRow(3, "\"http://[::1\"")]
+    [DataRow(4, "\"https://exa mple.test/x\"")]
+    [DataRow(4, "42")]
+    [DataRow(4, "true")]
+    [DataRow(4, "{\"unexpected\":\"value\"}")]
+    [DataRow(4, "[\"unexpected\"]")]
+    public async Task PersistedInvalidManifestValueLoadsSafelyWithoutDiscardingOtherSettings(
+        int sourceSchemaVersion,
+        string persistedValue)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "cum-settings-uri", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var settingsPath = Path.Combine(directory, "settings.json");
+        try
+        {
+            var persisted = JsonSerializer.SerializeToNode(new AppSettings
+            {
+                General = new GeneralSettings { CloseToTray = false, Language = "cy" },
+                History = new HistorySettings { RetentionDays = 41 },
+                Updates = new UpdateSettings { AutomaticChecks = false },
+            }, SettingsJson.TypeInfo)!.AsObject();
+            persisted["schemaVersion"] = sourceSchemaVersion;
+            var wrapper = JsonNode.Parse($$"""{"value":{{persistedValue}}}""")!.AsObject();
+            persisted["updates"]!.AsObject()["manifestUri"] = wrapper["value"]?.DeepClone();
+            await File.WriteAllTextAsync(settingsPath, persisted.ToJsonString(SettingsJson.Options));
+
+            var store = new JsonSettingsStore(settingsPath, NullLogger<JsonSettingsStore>.Instance);
+            var result = await store.LoadAsync(CancellationToken.None);
+
+            Assert.IsTrue(result.CanPersist);
+            Assert.AreEqual(sourceSchemaVersion, result.SourceSchemaVersion);
+            Assert.AreEqual(4, result.Settings.SchemaVersion);
+            Assert.IsFalse(result.Settings.General.CloseToTray);
+            Assert.AreEqual("cy", result.Settings.General.Language);
+            Assert.AreEqual(41, result.Settings.History.RetentionDays);
+            Assert.IsFalse(result.Settings.Updates.AutomaticChecks);
+            Assert.AreEqual(
+                "https://github.com/saroo98/codex-usage-monitor/releases/latest/download/update-manifest.json",
+                result.Settings.Updates.ManifestUri?.AbsoluteUri);
+            CollectionAssert.AreEqual(
+                new[] { new SettingsValidationIssue("updates.manifestUri", "settings.update_manifest_defaulted") },
+                result.Issues.ToArray());
+            Assert.IsFalse(result.Issues.Any(issue => issue.Code.Contains(persistedValue, StringComparison.Ordinal)));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void DisablingAutomaticChecksKeepsTheOfficialManifestConfigured()
+    {
+        const string json = """
+        {
+          "schemaVersion": 3,
+          "updates": {
+            "automaticChecks": false,
+            "manifestUri": null
+          }
+        }
+        """;
+        using var document = JsonDocument.Parse(json);
+
+        var migration = SettingsMigrator.ReadAndMigrate(document.RootElement);
+
+        Assert.IsFalse(migration.Settings?.Updates.AutomaticChecks);
+        Assert.AreEqual(
+            "https://github.com/saroo98/codex-usage-monitor/releases/latest/download/update-manifest.json",
+            migration.Settings?.Updates.ManifestUri?.AbsoluteUri);
     }
 
     [TestMethod]

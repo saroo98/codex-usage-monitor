@@ -7,6 +7,7 @@ namespace CodexUsageMonitor.Updater.Staging;
 public enum UpdateArtifactTrustMode
 {
     PublisherSignature,
+    ProjectManifest,
     DevelopmentFileManifest,
 }
 
@@ -71,20 +72,24 @@ public sealed class UpdateArtifactTrustPolicy
             return UpdateArtifactTrustMode.PublisherSignature;
         }
 
-        EnsureDevelopmentFallbackAllowed();
+        var trustMode = ResolveUnsignedTrustMode();
         var applicationEntry = packageManifest.GetRequiredEntry(UpdatePathLayout.ApplicationExecutableName);
         var hostEntry = packageManifest.GetRequiredEntry(UpdatePathLayout.UpdaterHostExecutableName);
         await UpdateFileIntegrity.VerifySha256Async(
             applicationPath,
             applicationEntry.Sha256,
-            "The unsigned development application does not match its build-generated manifest.",
+            trustMode is UpdateArtifactTrustMode.ProjectManifest
+                ? "The update application does not match its project-signed manifest."
+                : "The unsigned development application does not match its build-generated manifest.",
             cancellationToken).ConfigureAwait(false);
         await UpdateFileIntegrity.VerifySha256Async(
             updaterHostPath,
             hostEntry.Sha256,
-            "The unsigned development updater host does not match its build-generated manifest.",
+            trustMode is UpdateArtifactTrustMode.ProjectManifest
+                ? "The updater host does not match its project-signed manifest."
+                : "The unsigned development updater host does not match its build-generated manifest.",
             cancellationToken).ConfigureAwait(false);
-        return UpdateArtifactTrustMode.DevelopmentFileManifest;
+        return trustMode;
     }
 
     public async Task VerifyPreparedHostAsync(
@@ -116,6 +121,14 @@ public sealed class UpdateArtifactTrustPolicy
             case UpdateArtifactTrustMode.DevelopmentFileManifest:
                 EnsureDevelopmentFallbackAllowed();
                 break;
+            case UpdateArtifactTrustMode.ProjectManifest:
+                if (!UpdateBuildIdentity.IsPublicUnsignedRelease)
+                {
+                    throw new System.Security.Cryptography.CryptographicException(
+                        "Project-manifest updater artifacts are not permitted by this build.");
+                }
+
+                break;
             default:
                 throw new InvalidDataException("The updater trust mode is invalid.");
         }
@@ -129,24 +142,35 @@ public sealed class UpdateArtifactTrustPolicy
                 "Unsigned updater artifacts are not permitted by this build and runtime configuration.");
         }
     }
+
+    private UpdateArtifactTrustMode ResolveUnsignedTrustMode()
+    {
+        if (UpdateBuildIdentity.IsPublicUnsignedRelease)
+        {
+            return UpdateArtifactTrustMode.ProjectManifest;
+        }
+
+        EnsureDevelopmentFallbackAllowed();
+        return UpdateArtifactTrustMode.DevelopmentFileManifest;
+    }
 }
 
 internal static class UpdateBuildIdentity
 {
     private const string BuildFlavorMetadataName = "UpdateBuildFlavor";
 
-    public static bool IsDevelopmentBuild
-    {
-        get
-        {
-            var flavor = typeof(UpdateBuildIdentity).Assembly
-                .GetCustomAttributes<AssemblyMetadataAttribute>()
-                .SingleOrDefault(attribute => string.Equals(
-                    attribute.Key,
-                    BuildFlavorMetadataName,
-                    StringComparison.Ordinal))
-                ?.Value;
-            return string.Equals(flavor, "Development", StringComparison.Ordinal);
-        }
-    }
+    public static bool IsDevelopmentBuild => HasFlavor("Development");
+
+    public static bool IsPublicUnsignedRelease => HasFlavor("PublicUnsigned");
+
+    private static bool HasFlavor(string expected) => string.Equals(
+        typeof(UpdateBuildIdentity).Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .SingleOrDefault(attribute => string.Equals(
+                attribute.Key,
+                BuildFlavorMetadataName,
+                StringComparison.Ordinal))
+            ?.Value,
+        expected,
+        StringComparison.Ordinal);
 }

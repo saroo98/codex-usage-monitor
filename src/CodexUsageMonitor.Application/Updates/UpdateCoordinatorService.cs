@@ -83,7 +83,7 @@ public sealed class UpdateCoordinatorService
             catch (Exception exception) when (IsExpectedUpdateFailure(exception))
             {
                 var safeCode = SafeErrorCode(exception);
-                _failures.Report(safeCode, exception);
+                ReportExpectedUpdateFailure(safeCode, exception);
                 await PersistFailureAttemptAsync(cancellationToken).ConfigureAwait(false);
                 return Set(_state.Current with
                 {
@@ -151,7 +151,7 @@ public sealed class UpdateCoordinatorService
             catch (Exception exception) when (IsExpectedUpdateFailure(exception))
             {
                 var safeCode = SafeErrorCode(exception);
-                _failures.Report(safeCode, exception);
+                ReportExpectedUpdateFailure(safeCode, exception);
                 return Set(_state.Current with
                 {
                     Status = UpdateRuntimeStatus.Failed,
@@ -202,7 +202,7 @@ public sealed class UpdateCoordinatorService
             catch (Exception exception) when (IsExpectedUpdateFailure(exception))
             {
                 var safeCode = SafeErrorCode(exception);
-                _failures.Report(safeCode, exception);
+                ReportExpectedUpdateFailure(safeCode, exception);
                 return Set(_state.Current with { Status = UpdateRuntimeStatus.Failed, SafeErrorCode = safeCode });
             }
         }
@@ -316,6 +316,22 @@ public sealed class UpdateCoordinatorService
         System.ComponentModel.Win32Exception => "update.windows_failed",
         _ => "update.failed",
     };
+
+    private void ReportExpectedUpdateFailure(string safeCode, Exception exception) =>
+        _failures.Report(safeCode, new UpdateFailureDiagnosticException(SafeExceptionCategory(exception)));
+
+    private static string SafeExceptionCategory(Exception exception) => exception switch
+    {
+        HttpRequestException => nameof(HttpRequestException),
+        CryptographicException => nameof(CryptographicException),
+        UnauthorizedAccessException => nameof(UnauthorizedAccessException),
+        InvalidDataException => nameof(InvalidDataException),
+        IOException => nameof(IOException),
+        System.ComponentModel.Win32Exception => nameof(System.ComponentModel.Win32Exception),
+        _ => nameof(InvalidOperationException),
+    };
+
+    private sealed class UpdateFailureDiagnosticException(string category) : Exception(category);
 
     private sealed class InlineProgress<T>(Action<T> callback) : IProgress<T>
     {

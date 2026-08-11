@@ -5,8 +5,8 @@
   </PropertyGroup>
   <PropertyGroup>
     <UpdatePublicKeyBase64 Condition="'$(UpdatePublicKeyBase64)' == '' and '$(Configuration)' != 'Release'">11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=</UpdatePublicKeyBase64>
-    <UpdateBuildFlavor Condition="'$(Configuration)' == 'Release'">Production</UpdateBuildFlavor>
-    <UpdateBuildFlavor Condition="'$(Configuration)' != 'Release'">Development</UpdateBuildFlavor>
+    <UpdateBuildFlavor Condition="'$(UpdateBuildFlavor)' == '' and '$(Configuration)' == 'Release'">Production</UpdateBuildFlavor>
+    <UpdateBuildFlavor Condition="'$(UpdateBuildFlavor)' == '' and '$(Configuration)' != 'Release'">Development</UpdateBuildFlavor>
   </PropertyGroup>
   <Target Name="RequireReleaseUpdateTrustAnchor" BeforeTargets="CoreCompile" Condition="'$(Configuration)' == 'Release' and '$(UpdatePublicKeyBase64)' == ''">
     <Error Text="Release builds require UpdatePublicKeyBase64 to be supplied by the trusted release pipeline." />

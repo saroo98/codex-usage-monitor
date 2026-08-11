@@ -10,15 +10,13 @@ A lightweight native Windows widget for monitoring Codex usage limits and reset 
 
 ## What it does
 
-- Shows confirmed remaining usage and reset timing in a compact always-available widget.
-- Monitors multiple local Codex profiles without browser scraping.
+- Shows confirmed remaining usage and reset timing in a compact widget.
+- Monitors multiple isolated local Codex profiles.
 - Preserves the last valid reading when Codex is delayed, offline, or unavailable.
-- Supports Windows notifications, quiet hours, local history, and optional self-only email alerts through Gmail, Microsoft 365, Proton Mail Bridge, or encrypted SMTP.
-- Stores settings and history locally with bounded, redacted diagnostics.
-- Handles portable updates transactionally with integrity checks and startup-health rollback.
+- Supports local history, Windows notifications, quiet hours, and optional self-only email alerts.
+- Stores data locally with bounded, redacted diagnostics and no project-operated telemetry.
+- Supports portable transactional updates with startup-health rollback.
 - Supports light, dark, High Contrast, keyboard navigation, reduced motion, and 100–200% scaling.
-
-The application contains no project-operated telemetry or advertising.
 
 ## Requirements
 
@@ -26,29 +24,31 @@ The application contains no project-operated telemetry or advertising.
 - x64 or Arm64 Windows
 - The official Codex CLI installed and signed in
 
-Self-contained packages include the required .NET runtime. Framework-dependent packages require the matching .NET 10 Desktop Runtime.
+## Download and install
 
-## Install
+The x64 self-contained portable ZIP is the recommended download for most Windows PCs. It includes the required .NET runtime. Use the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases) until the verified `v6.0.0` asset has been published.
 
-For a normal Windows installation, open the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases) and choose the signed `CodexUsageMonitor-6.0.0.msixbundle` marked **Latest stable release**. On x64-only systems, the signed `CodexUsageMonitor-6.0.0-x64.msix` is equivalent. Open the package, accept the Windows install prompt, then complete onboarding. To uninstall, use Windows **Settings > Apps > Installed apps > Codex Usage Monitor > Uninstall**.
+1. Download `CodexUsageMonitor-6.0.0-win-x64-portable-self-contained.zip` from the official release.
+2. Right-click the ZIP and select **Extract All**.
+3. Choose a writable folder such as `%LOCALAPPDATA%\Programs\CodexUsageMonitor`.
+4. Open the extracted `CodexUsageMonitor` folder.
+5. Extract the complete folder before starting CodexUsageMonitor.exe.
+6. If Windows warns, verify the official release, `SHA256SUMS.txt`, and GitHub attestation before you decide whether to continue. Do not disable Windows security controls.
+7. To uninstall, exit the app from the notification area and delete the extracted folder.
 
-The **Portable ZIP** is the secondary option. Choose the x64 self-contained ZIP for most PCs. Extract it to a writable folder such as `C:\Users\<you>\Apps\CodexUsageMonitor`, keep the folder together, and run `CodexUsageMonitor.exe`. The archive contains `portable.mode`, so settings, history, logs, and update state stay in its `data` folder. To uninstall, exit the app from the notification area and delete the extracted folder. No registry entry or separate uninstaller is required.
+The archive contains `portable.mode`, so settings, history, logs, and update state remain in its `data` folder. Arm64 and framework-dependent ZIPs are secondary options. Framework-dependent packages require the matching .NET 10 Desktop Runtime. Update ZIPs are for the app's updater, not manual installation.
 
-The framework-dependent ZIP is an advanced option for maintainers or machines that already have the .NET 10 Desktop Runtime. Verify the SHA-256 value of every downloaded artifact against `SHA256SUMS.txt`.
-
-Public v6 packages are the successor to the **v5.0.0 Legacy** release. Use v5.0.0 only when you need to recover an older installation or follow its rollback instructions. Preview, unsigned, or development-signed artifacts are labeled as such and are not the stable download.
-
-Official production artifacts are published only when the release checks described in [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md) pass. Development-signed or unsigned artifacts are identified explicitly and are not represented as production-signed builds.
+Windows will show an unverified or unknown publisher because these files are not Authenticode-signed. See [Release integrity](RELEASE_INTEGRITY.md) for hashes, deterministic portable builds, CycloneDX inventory, GitHub build provenance, and Ed25519 update authentication.
 
 ## Privacy and security
 
 Codex authentication remains owned by the installed Codex CLI. The monitor does not request a ChatGPT password and is designed not to record prompts, conversations, repository contents, browser cookies, or Codex authentication tokens.
 
-Optional email credentials are protected using Windows security facilities. Email notifications are sent from the configured account back to that same account through a small, tested recipient boundary. Diagnostic exports omit email identities, notification contents, tokens, and credential references. See [EMAIL_SECURITY.md](EMAIL_SECURITY.md), [PRIVACY.md](PRIVACY.md), and [SECURITY.md](SECURITY.md).
+Optional email credentials use Windows-protected local storage. Email notifications are sent from the configured account back to that same account through a small, tested recipient boundary. See [EMAIL_SECURITY.md](EMAIL_SECURITY.md), [PRIVACY.md](PRIVACY.md), and [SECURITY.md](SECURITY.md).
 
 ## Build from source
 
-The repository pins .NET SDK `10.0.302` in `global.json`.
+The repository pins .NET SDK `10.0.302`.
 
 ```powershell
 ./eng/bootstrap.ps1
@@ -61,33 +61,14 @@ Complete Release verification for both architectures:
 ./eng/capture-verification-evidence.ps1 -Configuration Release -Architecture All
 ```
 
-Build and independently verify the unsigned artifact matrix:
-
-```powershell
-./eng/package-release.ps1 -Version 6.0.0 -OutputRoot artifacts/release -Configuration Release
-```
-
-To include the public OAuth application registrations in a release build:
-
-```powershell
-./eng/package-release.ps1 -Version 6.0.0 -OutputRoot artifacts/release -Configuration Release `
-  -GoogleOAuthClientId $env:GOOGLE_OAUTH_CLIENT_ID `
-  -MicrosoftOAuthClientId $env:MICROSOFT_OAUTH_CLIENT_ID `
-  -MicrosoftOAuthTenant common
-```
-
-The same values can be passed directly to `dotnet build` or `dotnet publish` as `-p:GoogleOAuthClientId=...`, `-p:MicrosoftOAuthClientId=...`, and `-p:MicrosoftOAuthTenant=common`. These are public native-application registration identifiers. No OAuth client secret is used or embedded.
-
-The repository pins its SDK and NuGet versions, enables deterministic compiler output, builds version tags in GitHub Actions, generates `SHA256SUMS.txt`, and independently reopens and verifies release artifacts. The release tooling also tests byte-identical unsigned portable ZIP output from two builds. Other artifact types are not described as byte-for-byte reproducible.
-
-Generated builds, reports, databases, logs, and local evidence remain under ignored paths and must not be committed.
+The repository pins SDK and NuGet versions, enables deterministic compiler output, generates `SHA256SUMS.txt` and `bom.json`, and independently reopens release artifacts. Release tooling tests byte-identical portable ZIP output from clean builds. Generated builds, reports, databases, logs, and local evidence remain under ignored paths.
 
 ## Repository layout
 
 - `src/CodexUsageMonitor.Core`: platform-independent domain rules
 - `src/CodexUsageMonitor.Application`: use cases, ports, and runtime state
 - `src/CodexUsageMonitor.App`: WPF shell, views, view models, and composition
-- `src/CodexUsageMonitor.*`: Codex, persistence, notification, email, migration, updater, and Windows adapters
+- `src/CodexUsageMonitor.*`: adapters for Codex, persistence, notifications, email, migration, updates, and Windows
 - `tests`: unit, contract, integration, migration, packaging, performance, and UI tests
 - `eng`: build, verification, packaging, privacy-audit, and release tooling
 - `docs`: static public website

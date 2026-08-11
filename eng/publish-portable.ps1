@@ -10,15 +10,21 @@ param(
     [ValidateSet('Debug','Release')]
     [string]$Configuration = 'Release',
 
+    [ValidateSet('Development','Production','PublicUnsigned')]
+    [string]$UpdateBuildFlavor = $(if ($Configuration -eq 'Release') { 'Production' } else { 'Development' }),
+
     [string]$Version,
 
-    [string]$UpdatePublicKeyBase64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    # NON-PRODUCTION TEST KEY. Production release preflight must reject this value.
+    [string]$UpdatePublicKeyBase64 = '11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=',
 
     [string]$GoogleOAuthClientId,
 
     [string]$MicrosoftOAuthClientId,
 
     [string]$MicrosoftOAuthTenant = 'common',
+
+    [string]$OutputRoot,
 
     [switch]$NoRestore
 )
@@ -31,11 +37,18 @@ Set-Location $RepositoryRoot
 if ([string]::IsNullOrWhiteSpace($Version)) { $Version = Get-ProductVersion -RepositoryRoot $RepositoryRoot }
 
 $flavor = if ($SelfContained) { 'self-contained' } else { 'framework-dependent' }
-$outputRoot = Join-Path $RepositoryRoot "artifacts/publish/$RuntimeIdentifier/$flavor"
+$outputRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+    Join-Path $RepositoryRoot "artifacts/publish/$RuntimeIdentifier/$flavor"
+} else {
+    [IO.Path]::GetFullPath($OutputRoot, $RepositoryRoot)
+}
+$buildArtifactsRoot = [IO.Path]::GetFullPath((Join-Path $outputRoot 'build'))
+if ($buildArtifactsRoot.IndexOfAny([char[]]',;=%') -ge 0) {
+    throw 'The build artifacts root cannot be represented safely in MSBuild PathMap. Choose an output path without comma, semicolon, equals sign, or percent sign.'
+}
 $appOutput = Join-Path $outputRoot 'app'
 $updaterOutput = Join-Path $outputRoot 'updater'
 $mergedOutput = Join-Path $outputRoot 'portable'
-$buildArtifactsRoot = Join-Path $outputRoot 'build'
 Remove-Item $outputRoot -Recurse -Force -ErrorAction SilentlyContinue
 New-Item $appOutput,$updaterOutput,$mergedOutput -ItemType Directory -Force | Out-Null
 
@@ -44,6 +57,7 @@ $common = @(
     '--runtime', $RuntimeIdentifier,
     '--self-contained', $SelfContained.ToString().ToLowerInvariant(),
     '--artifacts-path', $buildArtifactsRoot,
+    ('-p:PathMap=' + $buildArtifactsRoot + '=/_/artifacts'),
     ('-p:Version=' + $Version),
     ('-p:VersionPrefix=' + $Version),
     '-p:DebugType=None',
@@ -52,6 +66,7 @@ $common = @(
     '-p:PublishTrimmed=false',
     '-p:ReleasePackagingRestore=true',
     ('-p:UpdatePublicKeyBase64=' + $UpdatePublicKeyBase64)
+    ('-p:UpdateBuildFlavor=' + $UpdateBuildFlavor)
 )
 if ($NoRestore) { $common += '--no-restore' }
 if (-not [string]::IsNullOrWhiteSpace($GoogleOAuthClientId)) { $common += ('-p:GoogleOAuthClientId=' + $GoogleOAuthClientId.Trim()) }
@@ -101,12 +116,5 @@ $updater = Join-Path $mergedOutput 'CodexUsageMonitor.UpdaterHost.exe'
 if (-not (Test-Path $primary -PathType Leaf)) { throw 'Primary executable was not published.' }
 if (-not (Test-Path $updater -PathType Leaf)) { throw 'Updater executable was not published.' }
 if ((Get-Item $primary).Length -le 0 -or (Get-Item $updater).Length -le 0) { throw 'Published executable is empty.' }
-
-& python tools/generate_update_file_manifest.py --source $mergedOutput --version $Version | Out-Host
-if ($LASTEXITCODE -ne 0) { throw "Update file manifest generation failed for $RuntimeIdentifier/$flavor." }
-$packageManifest = Join-Path $mergedOutput 'update-files.json'
-if (-not (Test-Path $packageManifest -PathType Leaf) -or (Get-Item $packageManifest).Length -le 0) {
-    throw 'The generated update file manifest is missing or empty.'
-}
 
 Write-Output $mergedOutput

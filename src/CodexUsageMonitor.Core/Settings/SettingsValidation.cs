@@ -67,6 +67,7 @@ public static class SettingsValidation
         }
 
         ValidateEmail(source.Email, issues);
+        var manifestUri = NormalizeManifestUri(source.Updates.ManifestUri, issues);
         var normalized = source with
         {
             SchemaVersion = AppSettings.CurrentSchemaVersion,
@@ -88,6 +89,7 @@ public static class SettingsValidation
             Updates = source.Updates with
             {
                 CheckIntervalHours = Math.Clamp(source.Updates.CheckIntervalHours, 4, 168),
+                ManifestUri = manifestUri,
             },
             Email = source.Email with
             {
@@ -203,6 +205,25 @@ public static class SettingsValidation
     {
         var normalized = NormalizeOptional(value);
         return normalized is { Length: <= 256 } ? normalized : null;
+    }
+
+    private static Uri NormalizeManifestUri(
+        Uri? value,
+        List<SettingsValidationIssue> issues)
+    {
+        if (value is not null &&
+            value.IsAbsoluteUri &&
+            string.Equals(value.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(value.Host) &&
+            string.IsNullOrEmpty(value.UserInfo) &&
+            string.IsNullOrEmpty(value.Fragment) &&
+            Uri.IsWellFormedUriString(value.OriginalString, UriKind.Absolute))
+        {
+            return value;
+        }
+
+        issues.Add(new("updates.manifestUri", "settings.update_manifest_defaulted"));
+        return UpdateSettings.DefaultManifestUri;
     }
 
     private static bool IsEmail(string? value)

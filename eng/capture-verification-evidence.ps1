@@ -10,7 +10,8 @@ param(
 
     [switch]$SkipPackaging,
 
-    [string]$ValidationUpdatePublicKeyBase64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+    # NON-PRODUCTION TEST KEY. Production release preflight must reject this value.
+    [string]$ValidationUpdatePublicKeyBase64 = '11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo='
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,12 +19,22 @@ Set-StrictMode -Version Latest
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repositoryRoot
 
+$testResultsBase = [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'artifacts/TestResults/evidence'))
+$testResultsDirectory = [IO.Path]::GetFullPath((Join-Path $testResultsBase ([guid]::NewGuid().ToString('N'))))
+$testResultsPrefix = $testResultsBase.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+if (-not $testResultsDirectory.StartsWith($testResultsPrefix, [StringComparison]::OrdinalIgnoreCase) -or
+    (Test-Path -LiteralPath $testResultsDirectory)) {
+    throw 'Could not allocate a dedicated verification test-results directory.'
+}
+New-Item -ItemType Directory -Path $testResultsDirectory | Out-Null
+
 & "$PSScriptRoot/verify.ps1" `
     -Configuration $Configuration `
     -Architecture $Architecture `
     -SkipUi:$SkipUi `
     -SkipPackaging:$SkipPackaging `
-    -ValidationUpdatePublicKeyBase64 $ValidationUpdatePublicKeyBase64
+    -ValidationUpdatePublicKeyBase64 $ValidationUpdatePublicKeyBase64 `
+    -TestResultsDirectory $testResultsDirectory
 
 $commit = (git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the verified commit.' }
@@ -39,7 +50,7 @@ $testTotals = [ordered]@{
     skipped = 0
 }
 $testReports = @()
-$trxFiles = @(Get-ChildItem 'artifacts/TestResults' -Filter '*.trx' -File -ErrorAction SilentlyContinue)
+$trxFiles = @(Get-ChildItem -LiteralPath $testResultsDirectory -Filter '*.trx' -File -ErrorAction SilentlyContinue)
 foreach ($trxFile in $trxFiles) {
     [xml]$document = Get-Content $trxFile.FullName -Raw
     $counters = $document.SelectSingleNode("//*[local-name()='Counters']")
