@@ -211,6 +211,14 @@ jobs:
           ./eng/verify-release.ps1 -ReleaseRoot $root -Version $env:RELEASE_VERSION -Architectures x64,arm64 `
             -ReleaseMode PublicUnsigned -ExpectedRepository $env:GITHUB_REPOSITORY -ExpectedCommit $env:EXPECTED_COMMIT `
             -UpdateTrustAnchor $anchor
+          $localReport = Join-Path $root 'verification-report.json'
+          if (-not (Test-Path -LiteralPath $localReport -PathType Leaf)) {
+            throw 'Independent verification did not produce its local evidence report.'
+          }
+          Remove-Item -LiteralPath (Join-Path $root 'verification-report.json') -Force
+          if (Test-Path -LiteralPath $localReport) {
+            throw 'Local verification evidence must not enter the public release asset set.'
+          }
 
       - name: Attest provenance for all public assets
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
