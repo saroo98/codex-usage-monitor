@@ -53,7 +53,8 @@ public sealed record UpdateInstallRequest(
         var transactionId = Guid.NewGuid();
         var install = UpdatePathLayout.NormalizeInstallationDirectory(installationDirectory);
         var stage = UpdatePathLayout.NormalizePath(stagingDirectory);
-        var allowEmptyPins = trustMode is UpdateArtifactTrustMode.DevelopmentFileManifest;
+        var allowEmptyPins = trustMode is UpdateArtifactTrustMode.ProjectManifest or
+            UpdateArtifactTrustMode.DevelopmentFileManifest;
         var normalizedPublisherThumbprints = UpdatePublisherPins.Normalize(publisherThumbprints, allowEmptyPins);
         var request = new UpdateInstallRequest(
             CurrentSchemaVersion,
@@ -240,7 +241,8 @@ public sealed record UpdateInstallRequest(
             throw new InvalidDataException("Update file integrity metadata is invalid.");
         }
 
-        var allowEmptyPins = TrustMode is UpdateArtifactTrustMode.DevelopmentFileManifest;
+        var allowEmptyPins = TrustMode is UpdateArtifactTrustMode.ProjectManifest or
+            UpdateArtifactTrustMode.DevelopmentFileManifest;
         UpdatePublisherPins.ValidateCanonical(PublisherThumbprints, allowEmptyPins);
 
         EnsureRequiredString(InstallationDirectory);

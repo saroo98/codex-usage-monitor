@@ -57,7 +57,7 @@ public enum SmtpSecurityMode
 
 public sealed record AppSettings
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 
@@ -248,6 +248,10 @@ public sealed record HistorySettings
 
 public sealed record UpdateSettings
 {
+    public static Uri DefaultManifestUri { get; } = new(
+        "https://github.com/saroo98/codex-usage-monitor/releases/latest/download/update-manifest.json",
+        UriKind.Absolute);
+
     public bool AutomaticChecks { get; init; } = true;
 
     public bool AutomaticDownload { get; init; }
@@ -259,7 +263,7 @@ public sealed record UpdateSettings
 
     public int CheckIntervalHours { get; init; } = 24;
 
-    public Uri? ManifestUri { get; init; }
+    public Uri? ManifestUri { get; init; } = DefaultManifestUri;
 
     public DateTimeOffset? LastCheckAtUtc { get; init; }
 

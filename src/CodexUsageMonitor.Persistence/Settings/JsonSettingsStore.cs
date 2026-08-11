@@ -31,9 +31,13 @@ public sealed class JsonSettingsStore : ISettingsStore
 
             try
             {
-                await using var stream = OpenRead(_path);
-                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-                var migration = SettingsMigrator.ReadAndMigrate(document.RootElement);
+                SettingsMigrationResult migration;
+                await using (var stream = OpenRead(_path))
+                using (var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false))
+                {
+                    migration = SettingsMigrator.ReadAndMigrate(document.RootElement);
+                }
+
                 if (migration.Settings is null)
                 {
                     _logger.LogWarning(

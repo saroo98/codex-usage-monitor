@@ -143,7 +143,8 @@ public sealed record UpdateTransactionJournal(
 
         UpdatePublisherPins.ValidateCanonical(
             PublisherThumbprints,
-            allowEmpty: TrustMode is UpdateArtifactTrustMode.DevelopmentFileManifest);
+            allowEmpty: TrustMode is UpdateArtifactTrustMode.ProjectManifest or
+                UpdateArtifactTrustMode.DevelopmentFileManifest);
 
         EnsureRequiredPath(InstallationDirectory);
         EnsureRequiredPath(StagingDirectory);

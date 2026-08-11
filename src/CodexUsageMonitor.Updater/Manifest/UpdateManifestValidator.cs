@@ -92,8 +92,8 @@ public sealed class UpdateManifestValidator
                 throw new InvalidDataException("Update asset publisher pins are invalid.");
             }
 
-            var allowEmptyPins = _trustOptions.AllowUnsignedDevelopmentArtifacts &&
-                UpdateBuildIdentity.IsDevelopmentBuild;
+            var allowEmptyPins = UpdateBuildIdentity.IsPublicUnsignedRelease ||
+                (_trustOptions.AllowUnsignedDevelopmentArtifacts && UpdateBuildIdentity.IsDevelopmentBuild);
             UpdatePublisherPins.ValidateCanonical(asset.PublisherThumbprints, allowEmptyPins);
         }
 

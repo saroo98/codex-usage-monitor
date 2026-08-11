@@ -94,7 +94,7 @@ public sealed class SupportBundleBuilder
     private static async Task AddTextAsync(ZipArchive archive, string name, string value, CancellationToken cancellationToken)
     {
         var entry = archive.CreateEntry(name, CompressionLevel.SmallestSize);
-        entry.LastWriteTime = DateTimeOffset.UnixEpoch;
+        entry.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
         await using var stream = entry.Open();
         await using var writer = new StreamWriter(stream, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: false);
         await writer.WriteAsync(value.AsMemory(), cancellationToken).ConfigureAwait(false);
@@ -124,7 +124,18 @@ public sealed class SupportBundleBuilder
             oauthConfigured = !string.IsNullOrWhiteSpace(settings.Email.OAuthTokenReference),
         },
         settings.History,
-        settings.Updates,
+        updates = new
+        {
+            settings.Updates.AutomaticChecks,
+            settings.Updates.AutomaticDownload,
+            settings.Updates.InstallOnExit,
+            Channel = settings.Updates.Channel.ToString(),
+            settings.Updates.CheckIntervalHours,
+            manifestConfigured = settings.Updates.ManifestUri is not null,
+            settings.Updates.LastCheckAtUtc,
+            settings.Updates.ManifestEntityTag,
+            settings.Updates.LastOfferedVersion,
+        },
         profiles = settings.Profiles.Select(static profile => new { profile.Id, profile.Enabled, profile.MonitorInBackground }).ToArray(),
     };
 
