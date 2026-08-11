@@ -106,13 +106,16 @@ public sealed class PublicUnsignedReleaseContractTests
     [TestMethod]
     public void PublicDocumentationStatesTheUnsignedPortableReleaseTruthfully()
     {
+        const string recommendedDownload = "https://github.com/saroo98/codex-usage-monitor/releases/download/v6.0.0/CodexUsageMonitor-6.0.0-win-x64-portable-self-contained.zip";
+        var readme = Read("README.md");
+        var website = Read("docs/index.html");
         var combined = string.Join('\n',
-            Read("README.md"),
+            readme,
             Read("RELEASE_INTEGRITY.md"),
             Read("RELEASING.md"),
             Read("SECURITY.md"),
             Read("packaging/msix/README.md"),
-            Read("docs/index.html"),
+            website,
             Read("docs/code-signing.html"));
 
         AssertContainsAll(combined,
@@ -121,6 +124,11 @@ public sealed class PublicUnsignedReleaseContractTests
             "The x64 self-contained portable ZIP is the recommended download for most Windows PCs.",
             "Extract the complete folder before starting CodexUsageMonitor.exe.",
             "GitHub attestations prove build provenance; they do not make an unsigned Windows publisher trusted.");
+
+        StringAssert.Contains(readme, recommendedDownload);
+        StringAssert.Contains(website, recommendedDownload);
+        Assert.IsFalse(combined.Contains("until the verified `v6.0.0` asset has been published", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(combined.Contains("direct v6.0.0 asset link will be enabled only after verified publication", StringComparison.OrdinalIgnoreCase));
 
         foreach (var forbiddenClaim in new[]
         {
