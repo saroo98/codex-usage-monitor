@@ -1,0 +1,337 @@
+name: Native public unsigned release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact centralized product version
+        required: true
+        default: 6.0.0
+      publish_confirmed:
+        description: Publish the independently verified draft as latest stable
+        required: true
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: native-public-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  GH_TELEMETRY: 'false'
+  GH_PROMPT_DISABLED: '1'
+  GH_NO_UPDATE_NOTIFIER: '1'
+  GH_NO_EXTENSION_UPDATE_NOTIFIER: '1'
+
+jobs:
+  build-and-package:
+    name: Build and verify public unsigned artifacts
+    runs-on: windows-2022
+    timeout-minutes: 180
+    environment: native-production-release
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      artifact-name: ${{ steps.metadata.outputs.artifact-name }}
+      commit: ${{ steps.metadata.outputs.commit }}
+    steps:
+      - name: Verify hosted release toolchain
+        shell: pwsh
+        run: |
+          foreach ($name in @('ImageOS', 'ImageVersion', 'RUNNER_ARCH')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) { throw "Missing runner provenance: $name" }
+          }
+          if ($PSVersionTable.PSVersion.ToString() -ne '7.6.4') { throw 'Expected PowerShell 7.6.4.' }
+          if (((gh --version)[0] -split '\s+')[2] -ne '2.97.0') { throw 'Expected GitHub CLI 2.97.0.' }
+
+      - name: Check out exact release tag
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install exact .NET SDK 10.0.302
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.302'
+
+      - name: Verify exact .NET SDK version
+        shell: pwsh
+        run: if ((dotnet --version) -ne '10.0.302') { throw 'Expected .NET SDK 10.0.302.' }
+
+      - name: Install exact Python 3.13.14
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13.14'
+
+      - name: Verify exact Python version
+        shell: pwsh
+        run: if ((python --version) -ne 'Python 3.13.14') { throw 'Expected Python 3.13.14.' }
+
+      - name: Validate public release environment
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          UPDATE_PRIVATE_KEY_BASE64: ${{ secrets.UPDATE_PRIVATE_KEY_BASE64 }}
+        run: ./eng/assert-public-release-environment.ps1 -Version $env:RELEASE_VERSION -ExpectedWorkflowPath .github/workflows/native-public-release.yml
+
+      - name: Capture full release verification evidence
+        shell: pwsh
+        run: |
+          $anchor = (Get-Content -Raw packaging/update/update-trust-anchor.txt).Trim()
+          ./eng/capture-verification-evidence.ps1 -Configuration Release -Architecture All -SkipUi `
+            -ValidationUpdatePublicKeyBase64 $anchor
+
+      - name: Build exact public unsigned release
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          UPDATE_PRIVATE_KEY_BASE64: ${{ secrets.UPDATE_PRIVATE_KEY_BASE64 }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_CLIENT_ID }}
+          MICROSOFT_OAUTH_CLIENT_ID: ${{ vars.MICROSOFT_OAUTH_CLIENT_ID }}
+          MICROSOFT_OAUTH_TENANT: ${{ vars.MICROSOFT_OAUTH_TENANT }}
+        run: |
+          $anchor = (Get-Content -Raw packaging/update/update-trust-anchor.txt).Trim()
+          ./eng/package-release.ps1 `
+            -Version $env:RELEASE_VERSION `
+            -OutputRoot artifacts/public-release `
+            -Architectures x64,arm64 `
+            -Configuration Release `
+            -ReleaseMode PublicUnsigned `
+            -Repository $env:GITHUB_REPOSITORY `
+            -UpdateTrustAnchor $anchor `
+            -GoogleOAuthClientId $env:GOOGLE_OAUTH_CLIENT_ID `
+            -MicrosoftOAuthClientId $env:MICROSOFT_OAUTH_CLIENT_ID `
+            -MicrosoftOAuthTenant $env:MICROSOFT_OAUTH_TENANT
+
+      - name: Verify exact public asset set
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          $expected = @(
+            'BUILD-METADATA.json'
+            'CodexUsageMonitor-6.0.0-source.zip'
+            'CodexUsageMonitor-6.0.0-win-arm64-portable-framework-dependent.zip'
+            'CodexUsageMonitor-6.0.0-win-arm64-portable-self-contained.zip'
+            'CodexUsageMonitor-6.0.0-win-arm64-update.zip'
+            'CodexUsageMonitor-6.0.0-win-x64-portable-framework-dependent.zip'
+            'CodexUsageMonitor-6.0.0-win-x64-portable-self-contained.zip'
+            'CodexUsageMonitor-6.0.0-win-x64-update.zip'
+            'LICENSE.txt'
+            'SHA256SUMS.txt'
+            'THIRD-PARTY-NOTICES.md'
+            'UNSIGNED-WINDOWS-RELEASE.txt'
+            'bom.json'
+            'update-manifest.json'
+          ) | Sort-Object
+          $actual = @(Get-ChildItem artifacts/public-release -File | Where-Object Name -ne 'verification-report.json' | ForEach-Object Name | Sort-Object)
+          if (Compare-Object $expected $actual -CaseSensitive) { throw 'Public artifact matrix is not exact.' }
+
+      - name: Expose artifact metadata
+        id: metadata
+        shell: pwsh
+        run: |
+          "artifact-name=native-public-${{ inputs.version }}-${{ github.sha }}" >> $env:GITHUB_OUTPUT
+          "commit=${{ github.sha }}" >> $env:GITHUB_OUTPUT
+
+      - name: Upload exact public release files
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ steps.metadata.outputs.artifact-name }}
+          path: |
+            artifacts/public-release/BUILD-METADATA.json
+            artifacts/public-release/CodexUsageMonitor-6.0.0-source.zip
+            artifacts/public-release/CodexUsageMonitor-6.0.0-win-arm64-portable-framework-dependent.zip
+            artifacts/public-release/CodexUsageMonitor-6.0.0-win-arm64-portable-self-contained.zip
+            artifacts/public-release/CodexUsageMonitor-6.0.0-win-arm64-update.zip
+            artifacts/public-release/CodexUsageMonitor-6.0.0-win-x64-portable-framework-dependent.zip
+            artifacts/public-release/CodexUsageMonitor-6.0.0-win-x64-portable-self-contained.zip
+            artifacts/public-release/CodexUsageMonitor-6.0.0-win-x64-update.zip
+            artifacts/public-release/LICENSE.txt
+            artifacts/public-release/SHA256SUMS.txt
+            artifacts/public-release/THIRD-PARTY-NOTICES.md
+            artifacts/public-release/UNSIGNED-WINDOWS-RELEASE.txt
+            artifacts/public-release/bom.json
+            artifacts/public-release/update-manifest.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  attest-draft-and-publish:
+    name: Attest, verify draft, and optionally publish
+    needs: build-and-package
+    runs-on: windows-2022
+    timeout-minutes: 90
+    permissions:
+      actions: read
+      contents: write
+      attestations: write
+      id-token: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      EXPECTED_COMMIT: ${{ needs.build-and-package.outputs.commit }}
+    steps:
+      - name: Check out exact release tag
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install exact .NET SDK 10.0.302
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.302'
+
+      - name: Install exact Python 3.13.14
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13.14'
+
+      - name: Revalidate public release context
+        shell: pwsh
+        run: ./eng/assert-public-release-context.ps1 -Version $env:RELEASE_VERSION -ExpectedWorkflowPath .github/workflows/native-public-release.yml
+
+      - name: Download exact artifact from this run
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: ${{ needs.build-and-package.outputs.artifact-name }}
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'staged-release'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          gh run download $env:GITHUB_RUN_ID --repo $env:GITHUB_REPOSITORY --name $env:ARTIFACT_NAME --dir $root
+          if ($LASTEXITCODE -ne 0) { throw 'Could not download the exact build artifact.' }
+          $anchor = (Get-Content -Raw packaging/update/update-trust-anchor.txt).Trim()
+          ./eng/verify-release.ps1 -ReleaseRoot $root -Version $env:RELEASE_VERSION -Architectures x64,arm64 `
+            -ReleaseMode PublicUnsigned -ExpectedRepository $env:GITHUB_REPOSITORY -ExpectedCommit $env:EXPECTED_COMMIT `
+            -UpdateTrustAnchor $anchor
+
+      - name: Attest provenance for all public assets
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ runner.temp }}\staged-release\*
+
+      - name: Attest CycloneDX SBOM for application archives
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: |
+            ${{ runner.temp }}\staged-release\CodexUsageMonitor-${{ inputs.version }}-win-x64-portable-self-contained.zip
+            ${{ runner.temp }}\staged-release\CodexUsageMonitor-${{ inputs.version }}-win-x64-portable-framework-dependent.zip
+            ${{ runner.temp }}\staged-release\CodexUsageMonitor-${{ inputs.version }}-win-x64-update.zip
+            ${{ runner.temp }}\staged-release\CodexUsageMonitor-${{ inputs.version }}-win-arm64-portable-self-contained.zip
+            ${{ runner.temp }}\staged-release\CodexUsageMonitor-${{ inputs.version }}-win-arm64-portable-framework-dependent.zip
+            ${{ runner.temp }}\staged-release\CodexUsageMonitor-${{ inputs.version }}-win-arm64-update.zip
+          sbom-path: ${{ runner.temp }}\staged-release\bom.json
+
+      - name: Create or byte-verify the draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v$env:RELEASE_VERSION"
+          $staged = Join-Path $env:RUNNER_TEMP 'staged-release'
+          $existing = $null
+          $view = gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName,targetCommitish,isDraft,isPrerelease 2>$null
+          if ($LASTEXITCODE -eq 0) { $existing = $view | ConvertFrom-Json }
+          elseif ($LASTEXITCODE -ne 1) { throw 'Could not inspect the existing release.' }
+          if ($existing) {
+            if (-not $existing.isDraft -or $existing.isPrerelease -or $existing.tagName -cne $tag -or $existing.targetCommitish -cne $env:EXPECTED_COMMIT) {
+              throw 'The tag already has a non-reusable release.'
+            }
+            $download = Join-Path $env:RUNNER_TEMP 'existing-draft'
+            New-Item -ItemType Directory -Path $download | Out-Null
+            gh release download $tag --repo $env:GITHUB_REPOSITORY --dir $download
+            if ($LASTEXITCODE -ne 0) { throw 'Could not download the existing draft.' }
+            $expected = @(Get-ChildItem $staged -File | Sort-Object Name)
+            $actual = @(Get-ChildItem $download -File | Sort-Object Name)
+            if (Compare-Object $expected.Name $actual.Name -CaseSensitive) { throw 'Existing draft filenames differ.' }
+            foreach ($file in $expected) {
+              $other = Join-Path $download $file.Name
+              if ($file.Length -ne (Get-Item $other).Length -or (Get-FileHash $file.FullName -Algorithm SHA256).Hash -cne (Get-FileHash $other -Algorithm SHA256).Hash) {
+                throw "Existing draft bytes differ: $($file.Name)"
+              }
+            }
+          } else {
+            $notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+            @"
+          ## Download for Windows
+
+          For most PCs, download **CodexUsageMonitor-$env:RELEASE_VERSION-win-x64-portable-self-contained.zip**.
+
+          These Windows files are not Authenticode-signed. Windows can show an unverified or unknown publisher. Do not disable Windows security controls. Download only from this official release, compare `SHA256SUMS.txt`, or verify the GitHub artifact attestation.
+
+          1. Download the ZIP.
+          2. Right-click it and select **Extract All**.
+          3. Open the extracted `CodexUsageMonitor` folder.
+          4. Run `CodexUsageMonitor.exe`.
+
+          To uninstall, exit the app from the notification area and delete the extracted folder. Arm64 and framework-dependent ZIPs are secondary options. Update ZIPs are not direct downloads for installation.
+          "@ | Set-Content -LiteralPath $notes -Encoding utf8NoBOM
+            $assets = @(Get-ChildItem $staged -File | Sort-Object Name | ForEach-Object FullName)
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --draft --verify-tag --target $env:EXPECTED_COMMIT `
+              --title "Codex Usage Monitor $env:RELEASE_VERSION" --notes-file $notes $assets
+            if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed.' }
+          }
+
+      - name: Independently download and verify draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v$env:RELEASE_VERSION"
+          $download = Join-Path $env:RUNNER_TEMP 'verified-draft'
+          New-Item -ItemType Directory -Path $download | Out-Null
+          gh release download $tag --repo $env:GITHUB_REPOSITORY --dir $download
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release download failed.' }
+          $anchor = (Get-Content -Raw packaging/update/update-trust-anchor.txt).Trim()
+          ./eng/verify-release.ps1 -ReleaseRoot $download -Version $env:RELEASE_VERSION -Architectures x64,arm64 `
+            -ReleaseMode PublicUnsigned -ExpectedRepository $env:GITHUB_REPOSITORY -ExpectedCommit $env:EXPECTED_COMMIT `
+            -UpdateTrustAnchor $anchor
+          foreach ($file in Get-ChildItem $download -File | Where-Object Name -ne 'verification-report.json') {
+            gh attestation verify $file.FullName --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw "GitHub attestation verification failed: $($file.Name)" }
+          }
+
+      - name: Publish only after explicit confirmation and immutability check
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_CONFIRMED: ${{ inputs.publish_confirmed }}
+        run: |
+          if ($env:PUBLISH_CONFIRMED -notin @('true','false')) { throw 'publish_confirmed has an invalid value.' }
+          if ($env:PUBLISH_CONFIRMED -cne 'true') { Write-Host 'Verified draft retained; publication was not confirmed.'; exit 0 }
+          $immutable = gh api -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$env:GITHUB_REPOSITORY/immutable-releases" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or -not $immutable.enabled) { throw 'GitHub immutable releases must be enabled before publication.' }
+          gh release edit "v$env:RELEASE_VERSION" --repo $env:GITHUB_REPOSITORY --draft=false --prerelease=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Stable release publication failed.' }
+
+      - name: Re-download and verify published release
+        if: ${{ inputs.publish_confirmed }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v$env:RELEASE_VERSION"
+          $release = gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName,targetCommitish,isDraft,isPrerelease,isImmutable
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the published release.' }
+          $release = $release | ConvertFrom-Json
+          if ($release.tagName -cne $tag -or $release.targetCommitish -cne $env:EXPECTED_COMMIT -or $release.isDraft -or $release.isPrerelease -or -not $release.isImmutable) {
+            throw 'Published release state is invalid.'
+          }
+          $download = Join-Path $env:RUNNER_TEMP 'published-release'
+          New-Item -ItemType Directory -Path $download | Out-Null
+          gh release download $tag --repo $env:GITHUB_REPOSITORY --dir $download
+          $anchor = (Get-Content -Raw packaging/update/update-trust-anchor.txt).Trim()
+          ./eng/verify-release.ps1 -ReleaseRoot $download -Version $env:RELEASE_VERSION -Architectures x64,arm64 `
+            -ReleaseMode PublicUnsigned -ExpectedRepository $env:GITHUB_REPOSITORY -ExpectedCommit $env:EXPECTED_COMMIT `
+            -UpdateTrustAnchor $anchor
+          foreach ($file in Get-ChildItem $download -File | Where-Object Name -ne 'verification-report.json') {
+            gh attestation verify $file.FullName --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw "Published attestation verification failed: $($file.Name)" }
+          }
