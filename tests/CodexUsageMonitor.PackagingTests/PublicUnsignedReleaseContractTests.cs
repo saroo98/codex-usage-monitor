@@ -81,6 +81,29 @@ public sealed class PublicUnsignedReleaseContractTests
     }
 
     [TestMethod]
+    public void PublicWorkflowRemovesLocalVerificationEvidenceBeforeAttestationAndDraftCreation()
+    {
+        var workflow = ReadWorkflow().Replace("\r\n", "\n", StringComparison.Ordinal);
+        const string verification = "./eng/verify-release.ps1 -ReleaseRoot $root";
+        const string removal = "Remove-Item -LiteralPath (Join-Path $root 'verification-report.json') -Force";
+        const string attestation = "- name: Attest provenance for all public assets";
+        const string draftCreation = "gh release create $tag";
+
+        var verificationIndex = workflow.IndexOf(verification, StringComparison.Ordinal);
+        var removalIndex = workflow.IndexOf(removal, StringComparison.Ordinal);
+        var attestationIndex = workflow.IndexOf(attestation, StringComparison.Ordinal);
+        var draftCreationIndex = workflow.IndexOf(draftCreation, StringComparison.Ordinal);
+
+        Assert.IsTrue(verificationIndex >= 0, "The staged release must be independently verified.");
+        Assert.IsTrue(removalIndex > verificationIndex,
+            "Local verification evidence must be removed only after verification succeeds.");
+        Assert.IsTrue(attestationIndex > removalIndex,
+            "Local verification evidence must be removed before the public asset attestation.");
+        Assert.IsTrue(draftCreationIndex > removalIndex,
+            "Local verification evidence must be removed before draft asset upload.");
+    }
+
+    [TestMethod]
     public void PublicDocumentationStatesTheUnsignedPortableReleaseTruthfully()
     {
         var combined = string.Join('\n',
