@@ -26,7 +26,7 @@ A lightweight native Windows widget for monitoring Codex usage limits and reset 
 
 ## Download and install
 
-The x64 self-contained portable ZIP is the recommended download for most Windows PCs. It includes the required .NET runtime. Use the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases) until the verified `v6.0.0` asset has been published.
+The x64 self-contained portable ZIP is the recommended download for most Windows PCs. [Download the official v6.0.0 x64 package](https://github.com/saroo98/codex-usage-monitor/releases/download/v6.0.0/CodexUsageMonitor-6.0.0-win-x64-portable-self-contained.zip). It includes the required .NET runtime. See the [GitHub Releases page](https://github.com/saroo98/codex-usage-monitor/releases/tag/v6.0.0) for secondary packages, hashes, the SBOM, and verification guidance.
 
 1. Download `CodexUsageMonitor-6.0.0-win-x64-portable-self-contained.zip` from the official release.
 2. Right-click the ZIP and select **Extract All**.
