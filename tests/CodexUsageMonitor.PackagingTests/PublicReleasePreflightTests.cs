@@ -149,6 +149,7 @@ public sealed class PublicReleasePreflightTests
         await GitAsync(root, "commit", "--quiet", "--allow-empty", "-m", "public release fixture");
         await GitAsync(root, "tag", "v6.0.0");
         await GitAsync(root, "init", "--quiet", "--bare", origin);
+        await GitAsync(root, "--git-dir", origin, "config", "receive.shallowUpdate", "true");
         await GitAsync(root, "remote", "set-url", "origin", origin);
         await GitAsync(root, "push", "--quiet", "origin", "HEAD:refs/heads/main");
         await GitAsync(root, "fetch", "--quiet", "origin", "main");
