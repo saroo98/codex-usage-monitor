@@ -169,35 +169,35 @@
     <section class="download-section" id="download" aria-labelledby="download-title">
       <div class="shell">
         <div class="section-intro download-intro">
-          <div><p class="eyebrow">Windows 10 and 11 · v6.0.0</p><h2 id="download-title">Download for Windows.</h2></div>
-          <p>Start with the signed MSIX when the v6.0.0 release is marked <strong>Latest stable release</strong>. The current page is prepared for that stable asset; until it is published, preview files remain clearly labelled. Use the secondary Portable ZIP when you want one folder you can move or remove.</p>
+          <div><p class="eyebrow">Windows 10 and 11 · Portable</p><h2 id="download-title">Choose one clean folder.</h2></div>
+          <p>The x64 self-contained portable ZIP is the recommended download for most Windows PCs. Windows can show an unverified or unknown publisher because the files are unsigned. Verify the official release and keep Windows security controls enabled.</p>
         </div>
 
         <div class="package-grid">
           <article class="package-card package-featured">
             <div class="package-heading"><span class="package-icon">64</span><span class="package-status">Recommended</span></div>
-            <div><p class="package-kicker">x64 · Signed MSIX / setup</p><h3>Download for Windows</h3><p>One normal Windows install for most Intel and AMD PCs. It creates the app entry and a clear uninstall path in Windows Settings.</p></div>
-            <div class="package-meta"><span>Stable release target</span><span>Installs normally</span></div>
-            <a class="button button-primary" href="https://github.com/saroo98/codex-usage-monitor/releases">Download for Windows</a>
+            <div><p class="package-kicker">x64 · Self-contained</p><h3>Download for Windows</h3><p>Extract the complete folder, open it, and run <code>CodexUsageMonitor.exe</code>. The required .NET runtime is included.</p></div>
+            <div class="package-meta"><span>Portable ZIP</span><span>No installer</span></div>
+            <a class="button button-primary" href="https://github.com/saroo98/codex-usage-monitor/releases">Open GitHub Releases</a>
           </article>
 
           <article class="package-card">
-            <div class="package-heading"><span class="package-icon">64</span><span class="package-status neutral">Secondary</span></div>
-            <div><p class="package-kicker">x64 · Self-contained</p><h3>Portable ZIP</h3><p>Extract one folder and run it. The package includes its runtime and keeps settings, history, logs, and updates beside the app.</p></div>
-            <div class="package-meta"><span>No installer</span><span>Delete folder to remove</span></div>
-            <a class="button button-secondary" href="https://github.com/saroo98/codex-usage-monitor/releases">Download Portable ZIP</a>
+            <div class="package-heading"><span class="package-icon">ARM</span><span class="package-status neutral">Secondary</span></div>
+            <div><p class="package-kicker">Arm64 · Self-contained</p><h3>Arm64 portable ZIP</h3><p>Use this only on Arm-based Windows PCs. It includes the required runtime and uses the same portable folder layout.</p></div>
+            <div class="package-meta"><span>Arm64</span><span>Portable ZIP</span></div>
+            <a class="button button-secondary" href="https://github.com/saroo98/codex-usage-monitor/releases">View Arm64 package</a>
           </article>
 
           <article class="package-card package-pending">
-            <div class="package-heading"><span class="package-icon">···</span><span class="package-status pending">Advanced</span></div>
-            <div><p class="package-kicker">Maintainers · other architectures</p><h3>More artifacts</h3><p>Framework-dependent ZIPs, Arm64 packages, checksums, SBOM, and release evidence stay on the GitHub release page.</p></div>
-            <div class="package-meta"><span>v5.0.0 · Legacy</span><span>Arm64 validation</span></div>
+            <div class="package-heading"><span class="package-icon">.NET</span><span class="package-status pending">Advanced</span></div>
+            <div><p class="package-kicker">x64 and Arm64 · Secondary</p><h3>Advanced portable ZIPs</h3><p>The framework-dependent ZIPs are smaller downloads for systems that already have the matching .NET 10 Desktop Runtime. Checksums, CycloneDX SBOM, and GitHub attestations are on the release page.</p></div>
+            <div class="package-meta"><span>Runtime required</span><span>Advanced</span></div>
             <a class="button button-secondary" href="https://github.com/saroo98/codex-usage-monitor/releases">View all releases</a>
           </article>
         </div>
 
         <div class="download-footnote">
-          <span>Choose the asset labelled <strong>v6.0.0 · Latest stable release</strong> after it is published. Verify SHA-256 before running any preview or advanced artifact.</span>
+          <span>The direct v6.0.0 asset link will be enabled only after verified publication. Until then, review release status on GitHub. Do not disable Windows security controls.</span>
           <div><a href="https://github.com/saroo98/codex-usage-monitor/releases">All releases</a><a href="code-signing.html">Release integrity</a></div>
         </div>
       </div>

@@ -14,7 +14,7 @@ Useful reports include the affected version and architecture, Windows version, i
 
 ## Scope
 
-Relevant reports include credential exposure, unsafe update behavior, signature or release-provenance failures, account-data mixing, arbitrary code execution, privilege escalation, path traversal, and sensitive information written to logs or support bundles.
+Relevant reports include credential exposure, unsafe update behavior, signature or release-provenance failures, account-data mixing, arbitrary code execution, privilege escalation, path traversal, and sensitive information written to logs or support bundles. Release provenance and update-authentication controls are defined in the [release integrity policy](RELEASE_INTEGRITY.md); suspected workflow, tag, update-key, attestation, or artifact compromise follows the [release incident procedure](RELEASING.md#incident-response-and-rollback).
 
 ## Email notification security
 
