@@ -142,10 +142,11 @@ public sealed class PublicReleasePreflightTests
         CopyDirectory(Path.Combine(RepositoryRoot(), "tools", "CodexUsageMonitor.ReleaseTool"),
             Path.Combine(root, "tools", "CodexUsageMonitor.ReleaseTool"));
 
+        await GitAsync(root, "switch", "--create", "fixture-main");
         await GitAsync(root, "config", "user.email", "public-release-tests@example.invalid");
         await GitAsync(root, "config", "user.name", "Public Release Tests");
         await GitAsync(root, "add", "--all");
-        await GitAsync(root, "commit", "--quiet", "-m", "public release fixture");
+        await GitAsync(root, "commit", "--quiet", "--allow-empty", "-m", "public release fixture");
         await GitAsync(root, "tag", "v6.0.0");
         await GitAsync(root, "init", "--quiet", "--bare", origin);
         await GitAsync(root, "remote", "set-url", "origin", origin);
